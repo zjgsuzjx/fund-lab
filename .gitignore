@@ -1,0 +1,33 @@
+.local/
+.venv/
+.env
+__pycache__/
+
+# Local configuration and credentials
+.env.*
+!.env.example
+
+# Browser automation artifacts
+.playwright-mcp/
+playwright-report/
+test-results/
+scripts/test-playwright-mcp.cjs
+
+# Dependencies and generated output
+node_modules/
+dist/
+build/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local backups and logs
+backups/
+*.log
+
+# OS metadata
+.DS_Store
+Thumbs.db

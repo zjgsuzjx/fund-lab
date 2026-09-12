@@ -1,0 +1,6 @@
+name: simulate-alipay
+channels:
+  - defaults
+dependencies:
+  - python=3.13.15
+  - pip=26.2.1
