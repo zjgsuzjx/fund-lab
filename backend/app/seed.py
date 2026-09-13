@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 from .config import ROOT
 from .db import get_engine
-from .models import Fund, FundNav
+from .models import Fund, FundNav, FundRuleEvidence
 
 
 def seed(session: Session):
@@ -18,6 +18,10 @@ def seed(session: Session):
         added = session.scalar(insert(Fund).values(code=item['code'], name=item['name'], category=item['directory_type'],
             source_url=item['sources']['official'], source_observed_at=datetime.fromisoformat(report['run_at_utc']),
             is_sample=True, trade_enabled=False).on_conflict_do_nothing().returning(Fund.code))
+        session.execute(insert(FundRuleEvidence).values(fund_code=item['code'], source_url=item['sources']['official'],
+            observed_at=datetime.fromisoformat(report['run_at_utc']), subscription_fees=item['standard_subscription_fee_rows'],
+            redemption_fees=item['standard_redemption_fee_rows'], ongoing_fees=item['ongoing_fee_rows'], is_snapshot=True
+        ).on_conflict_do_nothing())
         if added is None:
             continue
         for nav in item['latest_samples']:

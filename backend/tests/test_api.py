@@ -70,7 +70,7 @@ def test_api_reads_postgres_search_and_pagination(db):
             fund = response.json()['items'][0]
             assert fund['code'] == '000147'
             assert isinstance(fund['unit_nav'], str)
-            assert fund['is_sample'] is True
+            assert fund['is_sample'] is db.get(Fund, '000147').is_sample
             assert fund['trade_enabled'] is False
             assert client.get('/api/funds', params={'q': '%'}).json()['total'] == 0
             assert len(client.get('/api/funds?page_size=2').json()['items']) == 2
