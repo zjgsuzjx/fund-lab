@@ -1,0 +1,1042 @@
+{
+  "schema_version": 1,
+  "run_at_utc": "2026-09-12T17:28:35.598540+00:00",
+  "offline": false,
+  "directory_count": 27842,
+  "alipay_coverage": "not_verified",
+  "funds": [
+    {
+      "code": "000147",
+      "name": "易方达高等级信用债债券A",
+      "directory_type": "债券型-信用债",
+      "official_identity": {
+        "基金名称": "易方达高等级信用债债券型证券投资基金",
+        "基金简称": "易方达高等级信用债债券A",
+        "基金代码": "000147",
+        "基金类型": "债券型"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/000147.shtml",
+        "profile": "https://fund.eastmoney.com/000147.html"
+      },
+      "declared_history_count": 3160,
+      "pages_probed": [
+        1,
+        2,
+        158
+      ],
+      "history_rows_probed": 60,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "1.2536",
+        "cumulative_nav": "1.5756",
+        "historical_purchase_status": "暂停申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2013-08-23",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "1.2536",
+          "cumulative_nav": "1.5756",
+          "historical_purchase_status": "暂停申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "1.2536",
+          "cumulative_nav": "1.5756",
+          "historical_purchase_status": "暂停申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "1.2538",
+          "cumulative_nav": "1.5758",
+          "historical_purchase_status": "暂停申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "开放申购",
+        "开放赎回"
+      ],
+      "status_fields_disagree": true,
+      "standard_subscription_fee_rows": [
+        [
+          "M<100万",
+          "0.80%"
+        ],
+        [
+          "100万≤M＜200万",
+          "0.50%"
+        ],
+        [
+          "200万≤M＜500万",
+          "0.30%"
+        ],
+        [
+          "M≥500万",
+          "按笔收取，1000.00元/笔"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7-29",
+          "0.75%"
+        ],
+        [
+          "30-364",
+          "0.10%"
+        ],
+        [
+          "365-729",
+          "0.05%"
+        ],
+        [
+          "730及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "0.40%"
+        ],
+        [
+          "托管费",
+          "0.10%"
+        ],
+        [
+          "销售服务费",
+          "0.00%"
+        ]
+      ],
+      "dividend_table_rows_visible": 10,
+      "dividend_sample": [
+        [
+          "2021-07-19",
+          "2021-07-12",
+          "0.007",
+          "2021-07-20"
+        ]
+      ],
+      "classification": "candidate_not_trade_enabled",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    },
+    {
+      "code": "000148",
+      "name": "易方达高等级信用债债券C",
+      "directory_type": "债券型-信用债",
+      "official_identity": {
+        "基金名称": "易方达高等级信用债债券型证券投资基金",
+        "基金简称": "易方达高等级信用债债券C",
+        "基金代码": "000148",
+        "基金类型": "债券型"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/000148.shtml",
+        "profile": "https://fund.eastmoney.com/000148.html"
+      },
+      "declared_history_count": 3160,
+      "pages_probed": [
+        1,
+        2,
+        158
+      ],
+      "history_rows_probed": 60,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "1.2261",
+        "cumulative_nav": "1.5341",
+        "historical_purchase_status": "开放申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2013-08-23",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "1.2261",
+          "cumulative_nav": "1.5341",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "1.2261",
+          "cumulative_nav": "1.5341",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "1.2263",
+          "cumulative_nav": "1.5343",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "开放申购",
+        "开放赎回"
+      ],
+      "status_fields_disagree": false,
+      "standard_subscription_fee_rows": [
+        [
+          "不收取申购费",
+          "0.00%"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7-29",
+          "0.75%"
+        ],
+        [
+          "30及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "0.40%"
+        ],
+        [
+          "托管费",
+          "0.10%"
+        ],
+        [
+          "销售服务费",
+          "0.40%"
+        ]
+      ],
+      "dividend_table_rows_visible": 10,
+      "dividend_sample": [
+        [
+          "2021-07-19",
+          "2021-07-12",
+          "0.007",
+          "2021-07-20"
+        ]
+      ],
+      "classification": "candidate_not_trade_enabled",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    },
+    {
+      "code": "110020",
+      "name": "易方达沪深300ETF联接A",
+      "directory_type": "指数型-股票",
+      "official_identity": {
+        "基金名称": "易方达沪深300交易型开放式指数发起式证券投资基金联接基金",
+        "基金简称": "易方达沪深300ETF联接A",
+        "基金代码": "110020",
+        "基金类型": "ETF联接基金"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/110020.shtml",
+        "profile": "https://fund.eastmoney.com/110020.html"
+      },
+      "declared_history_count": 4144,
+      "pages_probed": [
+        1,
+        2,
+        208
+      ],
+      "history_rows_probed": 44,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "1.8507",
+        "cumulative_nav": "1.8507",
+        "historical_purchase_status": "开放申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2009-08-26",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "1.8507",
+          "cumulative_nav": "1.8507",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "1.8653",
+          "cumulative_nav": "1.8653",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "1.8738",
+          "cumulative_nav": "1.8738",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "开放申购",
+        "开放赎回"
+      ],
+      "status_fields_disagree": false,
+      "standard_subscription_fee_rows": [
+        [
+          "M<100万",
+          "1.20%"
+        ],
+        [
+          "100万≤M＜500万",
+          "0.80%"
+        ],
+        [
+          "500万≤M＜1000万",
+          "0.20%"
+        ],
+        [
+          "M≥1000万",
+          "按笔收取，1000.00元/笔"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7-364",
+          "0.50%"
+        ],
+        [
+          "365-729",
+          "0.25%"
+        ],
+        [
+          "730及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "0.15%"
+        ],
+        [
+          "托管费",
+          "0.05%"
+        ],
+        [
+          "销售服务费",
+          "0.00%"
+        ]
+      ],
+      "dividend_table_rows_visible": 0,
+      "dividend_sample": [],
+      "classification": "candidate_not_trade_enabled",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    },
+    {
+      "code": "007339",
+      "name": "易方达沪深300ETF联接C",
+      "directory_type": "指数型-股票",
+      "official_identity": {
+        "基金名称": "易方达沪深300交易型开放式指数发起式证券投资基金联接基金",
+        "基金简称": "易方达沪深300ETF联接C",
+        "基金代码": "007339",
+        "基金类型": "ETF联接基金"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/007339.shtml",
+        "profile": "https://fund.eastmoney.com/007339.html"
+      },
+      "declared_history_count": 1796,
+      "pages_probed": [
+        1,
+        2,
+        90
+      ],
+      "history_rows_probed": 56,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "1.8235",
+        "cumulative_nav": "1.8235",
+        "historical_purchase_status": "开放申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2019-04-26",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "1.8235",
+          "cumulative_nav": "1.8235",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "1.8379",
+          "cumulative_nav": "1.8379",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "1.8463",
+          "cumulative_nav": "1.8463",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "开放申购",
+        "开放赎回"
+      ],
+      "status_fields_disagree": false,
+      "standard_subscription_fee_rows": [
+        [
+          "不收取申购费",
+          "0.00%"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "0.15%"
+        ],
+        [
+          "托管费",
+          "0.05%"
+        ],
+        [
+          "销售服务费",
+          "0.20%"
+        ]
+      ],
+      "dividend_table_rows_visible": 0,
+      "dividend_sample": [],
+      "classification": "candidate_not_trade_enabled",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    },
+    {
+      "code": "110009",
+      "name": "易方达价值精选混合",
+      "directory_type": "混合型-偏股",
+      "official_identity": {
+        "基金名称": "易方达价值精选混合型证券投资基金",
+        "基金简称": "易方达价值精选混合",
+        "基金代码": "110009",
+        "基金类型": "混合型"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/110009.shtml",
+        "profile": "https://fund.eastmoney.com/110009.html"
+      },
+      "declared_history_count": 4903,
+      "pages_probed": [
+        1,
+        2,
+        246
+      ],
+      "history_rows_probed": 43,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "1.5533",
+        "cumulative_nav": "4.4473",
+        "historical_purchase_status": "开放申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2006-06-13",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "1.5533",
+          "cumulative_nav": "4.4473",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "1.5653",
+          "cumulative_nav": "4.4593",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "1.5747",
+          "cumulative_nav": "4.4687",
+          "historical_purchase_status": "开放申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "开放申购",
+        "开放赎回"
+      ],
+      "status_fields_disagree": false,
+      "standard_subscription_fee_rows": [
+        [
+          "M<100万",
+          "1.50%"
+        ],
+        [
+          "100万≤M＜500万",
+          "1.20%"
+        ],
+        [
+          "500万≤M＜1000万",
+          "0.30%"
+        ],
+        [
+          "M≥1000万",
+          "按笔收取，1000.00元/笔"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7-364",
+          "0.50%"
+        ],
+        [
+          "365-729",
+          "0.25%"
+        ],
+        [
+          "730及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "1.20%"
+        ],
+        [
+          "托管费",
+          "0.20%"
+        ]
+      ],
+      "dividend_table_rows_visible": 10,
+      "dividend_sample": [
+        [
+          "2026-04-10",
+          "2026-04-01",
+          "0.03",
+          "2026-04-13"
+        ]
+      ],
+      "classification": "candidate_not_trade_enabled",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    },
+    {
+      "code": "110011",
+      "name": "易方达优质精选混合(QDII)",
+      "directory_type": "QDII-混合偏股",
+      "official_identity": {
+        "基金名称": "易方达优质精选混合型证券投资基金",
+        "基金简称": "易方达优质精选混合（QDII）",
+        "基金代码": "110011",
+        "基金类型": "混合型"
+      },
+      "sources": {
+        "official": "https://www.efunds.com.cn/fund/110011.shtml",
+        "profile": "https://fund.eastmoney.com/110011.html"
+      },
+      "declared_history_count": 4398,
+      "pages_probed": [
+        1,
+        2,
+        220
+      ],
+      "history_rows_probed": 58,
+      "pagination_passed": true,
+      "full_history_continuity_verified": false,
+      "latest": {
+        "date": "2026-09-11",
+        "unit_nav": "4.0512",
+        "cumulative_nav": "5.8412",
+        "historical_purchase_status": "限制大额申购",
+        "historical_redemption_status": "开放赎回",
+        "dividend_note": null
+      },
+      "oldest_sample_date": "2008-06-19",
+      "nav_crosscheck": {
+        "overlapping_dates": 10,
+        "mismatches": [],
+        "passed": true
+      },
+      "latest_samples": [
+        {
+          "date": "2026-09-11",
+          "unit_nav": "4.0512",
+          "cumulative_nav": "5.8412",
+          "historical_purchase_status": "限制大额申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-10",
+          "unit_nav": "4.0781",
+          "cumulative_nav": "5.8681",
+          "historical_purchase_status": "限制大额申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        },
+        {
+          "date": "2026-09-09",
+          "unit_nav": "4.1192",
+          "cumulative_nav": "5.9092",
+          "historical_purchase_status": "限制大额申购",
+          "historical_redemption_status": "开放赎回",
+          "dividend_note": null
+        }
+      ],
+      "current_profile_status": [
+        "限大额  (单日累计购买上限5.00万元",
+        "开放赎回"
+      ],
+      "status_fields_disagree": true,
+      "standard_subscription_fee_rows": [
+        [
+          "M<100万",
+          "1.50%"
+        ],
+        [
+          "100万≤M＜500万",
+          "1.20%"
+        ],
+        [
+          "M≥500万",
+          "按笔收取，1000.00元/笔"
+        ]
+      ],
+      "standard_redemption_fee_rows": [
+        [
+          "0-6",
+          "1.50%"
+        ],
+        [
+          "7-29",
+          "0.75%"
+        ],
+        [
+          "30-364",
+          "0.50%"
+        ],
+        [
+          "365-729",
+          "0.25%"
+        ],
+        [
+          "730及以上",
+          "0.00%"
+        ]
+      ],
+      "ongoing_fee_rows": [
+        [
+          "管理费",
+          "1.20%"
+        ],
+        [
+          "托管费",
+          "0.20%"
+        ]
+      ],
+      "dividend_table_rows_visible": 4,
+      "dividend_sample": [
+        [
+          "2021-02-25",
+          "2021-02-19",
+          "0.9",
+          "2021-02-26"
+        ]
+      ],
+      "classification": "exclude_qdii",
+      "trade_enabled": false,
+      "unverified": [
+        "alipay_listing_and_channel_discount",
+        "channel_specific_live_trade_status",
+        "minimum_amount_and_residual_shares",
+        "effective_dated_contract_rules",
+        "confirmation_and_arrival_calendar",
+        "complete_corporate_actions",
+        "commercial_data_permission_and_sla"
+      ]
+    }
+  ],
+  "errors": [],
+  "evidence": [
+    {
+      "url": "https://fund.eastmoney.com/js/fundcode_search.js",
+      "fetched_at_utc": "2026-09-12T17:28:35.518538+00:00",
+      "status": 200,
+      "content_type": "application/javascript",
+      "bytes": 3165227,
+      "sha256": "4411d1303a04a3c9dfbe80ecd82b26e1deee54bba44afe8ee9250ee1624b90ca"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/000147.shtml",
+      "fetched_at_utc": "2026-09-12T17:28:37.090037+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 372239,
+      "sha256": "8fb663049f29db2bfc52212ff4e9b613ce9974f78bf80f60bb5f4b46df513604"
+    },
+    {
+      "url": "https://fund.eastmoney.com/000147.html",
+      "fetched_at_utc": "2026-09-12T17:28:37.201229+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 121613,
+      "sha256": "190aa3e1b545954b1c5f80e185e92908e8e91b3a63fd9d2364373a83c00829e0"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000147&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:38.229675+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4465,
+      "sha256": "ae105e3144cbe84e3a5475a15e2a9b9c73abb413ee866c52a74dee5156b5c3a8"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000147&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:39.196032+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4461,
+      "sha256": "d6443c711a6f5f8f922094403b8076dc4b400109022cb1e8942fd1b3427a99e8"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000147&pageIndex=158&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:40.212114+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4424,
+      "sha256": "bcf7347badd00ef944575426127ed4e601f1e81816cc1cb14c6062fa782dbcca"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/000148.shtml",
+      "fetched_at_utc": "2026-09-12T17:28:42.085032+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 369920,
+      "sha256": "aa54a2a30a5889eadcd520f546a78a971a676158e40c2f66ad224c7f34d8ac27"
+    },
+    {
+      "url": "https://fund.eastmoney.com/000148.html",
+      "fetched_at_utc": "2026-09-12T17:28:42.283458+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 121030,
+      "sha256": "e957e4721459b74d74cb7ff11f9c864ee7a13dacbe75e742275c575d962a4956"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000148&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:43.204973+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4465,
+      "sha256": "60a2f310317b8128b7d3d1bbb818b96cb3b7d1094529f8863557afeeb5708d75"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000148&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:44.219186+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4462,
+      "sha256": "cb5db78cf97896e7212431751509e9cb8554fc4b615288fbff520fa1527f002d"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=000148&pageIndex=158&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:45.237348+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4425,
+      "sha256": "fc188c17144baed9e4822b07217c9dc5d3e35bb1b1bc8db6ff2e6fde51a9b372"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/110020.shtml",
+      "fetched_at_utc": "2026-09-12T17:28:47.305826+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 405882,
+      "sha256": "5f3953b4eea7ee634893a11378ed577a0995825a90ae84be13862b7910687c8d"
+    },
+    {
+      "url": "https://fund.eastmoney.com/110020.html",
+      "fetched_at_utc": "2026-09-12T17:28:47.478638+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 125809,
+      "sha256": "b051c52e0d89edd7150d1fc1248081726cd838338313f7d9d9f634581aba46f4"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110020&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:48.442701+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4488,
+      "sha256": "bffc5b6f9ae8adc9491f616624b6dca0d96285154958826c4a7e96261779ceef"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110020&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:49.437536+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4485,
+      "sha256": "78cd76b5a2e3e6d9603ffa81c667975e32311429b2bc9bccb6908793a0a3f36c"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110020&pageIndex=208&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:50.471415+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 1036,
+      "sha256": "24ea8a6b3acbe61fa05ed2c6b56fa5bc76aa764dd9b2bee5197ba793967c8f0b"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/007339.shtml",
+      "fetched_at_utc": "2026-09-12T17:28:52.454040+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 384499,
+      "sha256": "00a7d6b7d1656981b4da71dd402dc16eaf4608f183d7f30d5091dbf09b783026"
+    },
+    {
+      "url": "https://fund.eastmoney.com/007339.html",
+      "fetched_at_utc": "2026-09-12T17:28:52.638014+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 124323,
+      "sha256": "46c2610041869028234ca9b250e10c85b2396458f545ed8707a041eaf0c55aaf"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=007339&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:53.602235+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4488,
+      "sha256": "9edf8e79c91277a36b1d4072957bc724b739684c413339f7195dee0b9cff2602"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=007339&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:54.583675+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4485,
+      "sha256": "fbc07d26cdd746ef6827104fc2ad9a29ae76e7dded419191d461c8fcb3d24564"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=007339&pageIndex=90&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:55.605587+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 3658,
+      "sha256": "bf338b77a80a30fa0550a4bc6c8c264e2f5330763354c4673b5eb5f8aec74049"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/110009.shtml",
+      "fetched_at_utc": "2026-09-12T17:28:57.842064+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 398036,
+      "sha256": "283b41801018c88d8dd3e5e1f7027c2f96774afcddadd5829d7bd658e660c862"
+    },
+    {
+      "url": "https://fund.eastmoney.com/110009.html",
+      "fetched_at_utc": "2026-09-12T17:28:58.060933+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 126612,
+      "sha256": "9f907fb42065a7bc27b0e8d5e94b7dcc6aa882cac535e313fc4c70690fbd6a4a"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110009&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:58.981125+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4467,
+      "sha256": "84cb26c96caa387a928003d6872889f9876f1bb90669ae5d7053cd99b7c96aff"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110009&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:28:59.978521+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4464,
+      "sha256": "9b4355d480365dea50adfbdc8fe3d31d03780325d468476e05a215175e45f8d4"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110009&pageIndex=246&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:29:00.966907+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 805,
+      "sha256": "d1e0f0ab6cf92a1855322e52ba548d83c1b7da3b1f18ae9495e7183da5ebde73"
+    },
+    {
+      "url": "https://www.efunds.com.cn/fund/110011.shtml",
+      "fetched_at_utc": "2026-09-12T17:29:02.923012+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 380566,
+      "sha256": "67b254ed6e35cdf80c2154b4162ff0966cc298ba046a515effc680520e995637"
+    },
+    {
+      "url": "https://fund.eastmoney.com/110011.html",
+      "fetched_at_utc": "2026-09-12T17:29:03.082703+00:00",
+      "status": 200,
+      "content_type": "text/html",
+      "bytes": 123986,
+      "sha256": "167aefba72b3a0d22cc836028b2af3b996ca4a6d68952dc6859ca0cba2f29287"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110011&pageIndex=1&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:29:04.054980+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4589,
+      "sha256": "d0fa9290f32b3af3e5946d9a3bc3bb1a2e28a0821beebd390f70e19ca0ffe666"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110011&pageIndex=2&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:29:05.047476+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 4586,
+      "sha256": "4f956df38eaf315208f41c26940d8c7b3cacf46f3c84b996b57b430d1e3d3216"
+    },
+    {
+      "url": "https://api.fund.eastmoney.com/f10/lsjz?fundCode=110011&pageIndex=220&pageSize=20",
+      "fetched_at_utc": "2026-09-12T17:29:06.047216+00:00",
+      "status": 200,
+      "content_type": "application/json; charset=utf-8",
+      "bytes": 3976,
+      "sha256": "93a59377b46fbc65208923949cf94343113c2e53282263b4553b101354da328d"
+    }
+  ],
+  "technical_probe_passed": true,
+  "production_trade_ready": false
+}

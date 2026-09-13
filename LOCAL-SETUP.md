@@ -1,73 +1,52 @@
 # 本地开发环境
 
-## Python：使用 Conda 环境
+完整安装和启动顺序见 [README](README.md)。应用不依赖 PowerShell 包装脚本，统一使用命令行。
 
-项目改用 Conda 管理的 `simulate-alipay` 环境，Python 3.13.15、pip 26.2.1，版本约束见根目录 `environment.yml`。原开发电脑的 Conda 版本为 4.13.0，安装于 `D:\code`，新环境位于 `D:\code\envs\simulate-alipay`；其他开发者不需要使用相同路径。base 和其他环境不修改。
+## 原开发电脑的环境
 
-```powershell
-conda env create -f environment.yml
-conda activate simulate-alipay
-python --version
-python -m pip --version
-```
-
-已有同名环境时直接激活。普通 PowerShell 可以点调用 `. .\scripts\activate-dev.ps1`，加载 Conda 自身的 PowerShell hook 并激活环境，不执行全局 `conda init`。如果找不到 Conda，请从已配置 Conda 的 PowerShell 打开项目。退出环境使用 `conda deactivate`。
-
-现有 Conda 4.13.0 与 PowerShell 7.6.5 存在空参数传递差异。激活脚本对当前终端加载的 Conda 模块启用兼容参数传递，不修改 Conda 安装文件或其他命令的参数传递模式。若直接 `conda activate` 遇到解析错误，优先使用上述点调用脚本或 `conda run`。
-
-也可以使用 `conda run -n simulate-alipay python ...`，无须激活。当前没有业务依赖，原虚拟环境仅含 pip。验证完成后已移除旧 `.venv`、`.local/python313` 和下载的 Python 安装包；项目不再携带 Python 运行时。
-
-## PostgreSQL：使用独立安装的服务
-
-原开发电脑已验证的安装信息（其他开发者无需使用相同安装路径）：
-
-- 服务端与客户端：PostgreSQL 17.11。
-- 程序目录：`D:\Program Files\PostgreSQL\17\bin`。
-- 数据目录：`D:\Program Files\PostgreSQL\17\data`，由系统安装的服务管理。
-- Windows 服务：`postgresql-x64-17`。
-- 项目连接：`127.0.0.1:5432`，数据库 `simulate_alipay`。
-
-项目不携带 PostgreSQL 程序和数据目录，也不启停共享服务。通过 Windows“服务”应用管理服务及其开机启动设置。
-
-## 配置和使用
-
-从项目根目录执行；已有 `.env` 时保留现有配置：
-
-```powershell
-if (-not (Test-Path .env)) { Copy-Item .env.example .env }
-```
-
-编辑 `.env`，填写 `PGHOST`、`PGPORT`、`PGDATABASE`、`PGUSER`、`PGPASSWORD`。`PG_BIN` 可选，填写包含 `psql.exe` 的目录；留空时依次查找 `PATH` 和 Windows PostgreSQL 安装注册表。非空同名进程环境变量优先。
-
-配置支持整行注释及成对引号，不执行代码、不展开变量，不支持行内注释。个人密码只保存在 `.env`，不应提交或分享该文件。
-
-```powershell
-. .\scripts\activate-dev.ps1
-python --version
-.\scripts\init-db.ps1
-.\scripts\test-db.ps1
-.\scripts\db-shell.ps1
-```
-
-- `init-db.ps1`：连接维护库 `postgres`，仅当项目数据库不存在时创建它。要求用户有相应权限；不创建业务表，不清空现有库。
-- `test-db.ps1`：验证服务版本、数据库和用户名，并在事务中创建临时表、读写、回滚，不留下业务数据。
-- `db-shell.ps1`：打开 `psql`，输入 `\q` 退出，也支持 `-c 'SELECT current_database();'` 等参数。
-- 初始化与检查使用非交互连接，需事先配置密码或 PostgreSQL 密码文件；交互终端可提示输入密码。
-
-## 常见问题
-
-| 现象 | 检查项 |
+| 工具 | 环境或路径 |
 | --- | --- |
-| 找不到 psql | 安装 PostgreSQL 客户端工具；将安装目录的 `bin` 写入 `PG_BIN` |
-| 连接被拒绝 | 服务是否启动，`PGHOST`、`PGPORT` 是否与本机安装一致 |
-| 密码认证失败 | `.env` 中的用户和密码是否正确，是否被进程环境变量覆盖 |
-| 数据库不存在 | 先运行初始化，或请数据库管理员建立 `PGDATABASE` 对应库 |
-| 没有创建数据库权限 | 请管理员建库并授权；不要修改或删除其他项目数据库 |
+| Conda | 4.13.0，安装于 `D:\code` |
+| Python | 3.13.15，环境 `simulate-alipay`，路径 `D:\code\envs\simulate-alipay` |
+| PostgreSQL | 17.11，Windows 服务 `postgresql-x64-17` |
+| PostgreSQL 客户端 | `D:\Program Files\PostgreSQL\17\bin\psql.exe` |
+| 项目数据库 | `127.0.0.1:5432/simulate_alipay` |
 
-## 从项目内数据库切换的记录
+其他开发者无需使用相同安装路径。Python 由 Conda 管理，PostgreSQL 是系统独立安装的共享服务；仓库不保存它们的程序或数据目录。
 
-已临时启动旧实例检查：只有 `postgres` 与 `simulate_alipay` 两个非模板库，没有业务表；已保留逻辑备份 `backups/postgresql-project-before-system.sql`，未导出角色密码。
+## 本机日常使用
 
-系统实例原本只有 `postgres` 库，现已创建空的 `simulate_alipay` 并通过读写与重复初始化检查。旧实例已正常停止，其程序、数据目录、旧连接配置和下载包已清理。原来的 `start-db.ps1` / `stop-db.ps1` 已移除，避免误操作共享服务。
+在 `F:\code\simulate-alipay` 打开两个终端。
 
-备份仅用于本次迁移留档，不要未经检查直接向已有系统实例恢复整个集群备份。`.local`、`.venv`、`.env` 和 `backups/` 均被 Git 忽略；可提交的连接模板是 `.env.example`。
+后端：
+
+```powershell
+conda run -n simulate-alipay --no-capture-output --cwd backend python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+前端：
+
+```powershell
+npm --prefix frontend run dev
+```
+
+浏览器访问 [本地应用](http://127.0.0.1:5173)。分别按 `Ctrl+C` 停止前后端。
+
+## 配置及排错
+
+- Python 后端读取根目录 `.env` 的 `PGHOST`、`PGPORT`、`PGDATABASE`、`PGUSER`、`PGPASSWORD`。非空同名进程环境变量优先，不插值，不支持行内注释。密码不提交 Git。
+- `psql` 不读取项目 `.env`，在命令中指定主机、端口、用户名和库名，使用 `-W` 提示输入密码。无需 `PG_BIN` 配置。
+- Conda 4.13.0 与 PowerShell 7.6.5 的激活 hook 有兼容问题，使用 `conda run` 可避免依赖该 hook，无须 `conda init`。找不到 Conda 时可使用 `& 'D:\code\Scripts\conda.exe' run ...`，或在已配置 Conda 的终端运行。
+- 连接失败：检查 PostgreSQL 服务和 `.env`；表结构未就绪时执行 README 的 Alembic 升级命令。
+- 端口占用：先确认是否已有本项目实例运行，不要批量终止其他程序。
+- 本机已有环境、数据库和样本，不要重新创建或清空。依赖变更后按 README 安装锁定版本。
+
+## 环境迁移记录
+
+旧项目内 PostgreSQL 已停用、备份并清理；备份位于被 Git 忽略的 `backups/postgresql-project-before-system.sql`。当前系统数据库已包含基础表及 5 只历史样本，不再是空库。
+
+旧 `.venv` 和 `.local/python313` 已移除。2026-09-13 按项目使用方式调整，移除了环境激活、数据库初始化/连接/检查、前后端启动等 PowerShell 包装脚本及配套 SQL 文件；数据源验证和测试工具继续保留在 `scripts/`。
+
+## 启动时调用了 base Python
+
+若错误路径为 `D:\code\python.exe`，实际调用的是 base，并不代表项目环境缺少 Uvicorn。已验证 `D:\code\envs\simulate-alipay\python.exe` 中安装了 Uvicorn 0.52.4。可按 README 的 CMD / PowerShell 示例直接指定该解释器，绕开当前终端的环境解析；不需要重新安装或启动脚本。

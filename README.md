@@ -4,7 +4,7 @@
 
 项目重点是模拟基金按正式净值确认份额、按持有期计算费用以及等待赎回到账的过程。首版计划在本机运行，通过浏览器使用，无需购买服务器。
 
-> **当前进度：设计定稿与开发规划阶段。** 已完成 12 页界面设计、功能清单和开发规划，并准备了本地 Python / PostgreSQL 环境。前端、后端及交易引擎尚未实现；当前仓库不能启动完整业务应用。
+> **当前进度：工程基础已搭建。** React 前端、FastAPI 后端和 PostgreSQL 已打通，支持服务检查及历史样本基金搜索。已完成 12 页设计；登录注册、持仓和模拟交易仍待实现，当前页面用于基础联调，不是完整业务版。
 
 ## 项目目标
 
@@ -32,7 +32,7 @@
 
 首版计划支持规则完整、数据可用的普通境内开放式债券型、指数型和混合型基金。**债券型基金不等于直接买卖单只债券**，后者不在首版范围内。
 
-基金数据源尚待验证，暂不承诺完整覆盖支付宝代销的全部基金。货币基金、QDII、场内交易及其他特殊规则基金将在具备相应处理能力后另行支持。
+基金数据源已完成第一轮样本验证，暂不承诺完整覆盖支付宝代销的全部基金。货币基金、QDII、场内交易及其他特殊规则基金将在具备相应处理能力后另行支持。
 
 完整范围与验收标准见 [功能清单与开发规划](docs/功能清单与开发规划.md)。
 
@@ -42,20 +42,24 @@
 
 | 技术 / 工具 | 当前版本 | 用途与状态 |
 | --- | --- | --- |
-| Node.js | **24.19.0** | 已安装；后续用于前端开发和构建 |
+| Node.js | **24.19.0** | 前端开发和构建，项目使用 24.x |
 | npm | **11.17.0** | 已安装；前端包管理 |
 | Conda | **4.13.0** | 当前环境管理工具；独立创建项目环境，不修改 base |
 | Python | **3.13.15** | 使用 Conda 的 `simulate-alipay` 环境；版本约束见 `environment.yml` |
 | pip | **26.2.1** | Conda 环境内的 Python 包管理工具 |
 | PostgreSQL | **17.11** | 使用电脑上独立安装的 PostgreSQL 服务；项目只创建自己的数据库 |
-| React | 待初始化时锁定 | 计划用于前端界面；尚未安装 |
-| TypeScript | 待初始化时锁定 | 计划用于前端类型检查；尚未安装 |
-| Vite | 待初始化时锁定 | 计划用于前端开发与构建；尚未安装 |
-| FastAPI | 待初始化时锁定 | 计划用于 Python HTTP API；尚未安装 |
+| React / React DOM | **19.3.0** | 前端界面 |
+| TypeScript | **7.0.2** | 前端类型检查 |
+| Vite | **8.3.0** | 开发服务与生产构建 |
+| FastAPI | **0.141.1** | Python HTTP API |
+| Uvicorn | **0.52.4** | API 服务进程 |
+| SQLAlchemy | **2.0.52** | 数据模型和数据库访问 |
+| Alembic | **1.20.0** | 数据库版本迁移 |
+| Psycopg | **3.3.5** | PostgreSQL 驱动，使用 binary 包 |
 | Git | 2.35.1.windows.2 | 当前版本；用于版本管理 |
 | PowerShell | 7.6.5 | 当前版本；用于 Windows 本地脚本 |
 
-前后端尚未初始化，因此当前没有 `package.json`、npm 锁文件或 Python 业务依赖清单。框架的准确版本将在初始化和兼容性验证后写入依赖文件，并同步更新本表；请勿把“待锁定”理解为可以任意使用最新版。
+前端准确版本与依赖树见 `frontend/package.json` 和 `frontend/package-lock.json`；后端完整版本见 `backend/requirements.txt`，直接依赖的升级范围见 `backend/requirements.in`。新电脑按锁定文件安装，不需要全局安装这些框架。
 
 ## 需要安装哪些软件
 
@@ -70,7 +74,7 @@
 
 VS Code 等代码编辑器、pgAdmin 等数据库管理工具为可选项。Docker、云服务器、Figma 和浏览器自动化工具都不是首版本地运行的必装项。
 
-React、TypeScript、Vite 和 FastAPI 属于项目依赖，后续按仓库的依赖文件安装，无需现在逐个全局安装。
+React、TypeScript、Vite 和 FastAPI 属于项目依赖，按下面的初始化命令统一安装。
 
 ## 当前仓库可以怎么使用
 
@@ -84,82 +88,151 @@ React、TypeScript、Vite 和 FastAPI 属于项目依赖，后续按仓库的依
 
 GitHub 文件页面不会直接运行 HTML 预览，需要将仓库下载到本机后打开。设计稿目前是静态页面，不包含可点击的业务交互。
 
-### 安装环境并配置数据库（Windows）
+### 首次安装（Windows / PowerShell）
 
-数据库使用电脑上独立安装的 PostgreSQL，不再随项目保存程序或数据目录。以下脚本面向 Windows / PowerShell；其他系统可使用自己的 PostgreSQL 客户端完成同样的数据库准备。
+以下命令从仓库根目录执行。已有环境、数据库或 `.env` 时直接复用，不要重复创建或覆盖。你当前电脑已完成安装和迁移，可直接跳到“日常启动”。
 
-克隆仓库不会自带 Python、Conda 环境、PostgreSQL 程序或数据库数据。在新电脑安装上述软件，并确保 PostgreSQL 服务已启动。
-
-安装上述工具后，先核对版本：
+1. 安装 Git、Node.js 24.x（含 npm）、Conda 和 PostgreSQL 17，并启动 PostgreSQL 服务。
+2. 克隆仓库并进入目录：
 
 ```powershell
-git --version
-node --version
-npm --version
-conda --version
-psql --version
+git clone https://github.com/zjgsuzjx/fund-lab.git
+Set-Location fund-lab
 ```
 
-创建并激活 Conda 环境：
+3. 创建 Python 环境并安装锁定依赖：
 
 ```powershell
+# 仅在同名环境不存在时创建；可先用 conda env list 查看
 conda env create -f environment.yml
-conda activate simulate-alipay
-python --version
-python -m pip --version
+conda run -n simulate-alipay python -m pip install --no-user -r backend/requirements.txt
+npm --prefix frontend ci --cache .local/npm-cache
 ```
 
-环境安装在 Conda 管理的目录中，不在仓库内创建 `.venv`，也不需要项目内的 Python 运行时。已有 `simulate-alipay` 环境时直接激活，不要重复创建。业务依赖尚未添加；`environment.yml` 当前只声明 Python 和 pip，后续再更新业务依赖。
+这里使用 `conda run`，不依赖激活脚本或 PowerShell 的 Conda hook。框架不需要全局安装；已有环境只执行依赖安装命令。
 
-普通 PowerShell 尚未初始化 Conda 时，可以在能找到 Conda 命令的终端运行 `. .\scripts\activate-dev.ps1`。脚本只加载当前终端的 Conda hook，不修改全局 shell 配置。使用完毕可执行 `conda deactivate`。不想激活时可用 `conda run -n simulate-alipay python --version` 运行命令。
+4. 准备数据库：打开 PostgreSQL 客户端，密码在提示时输入，不写在命令中。
 
-如果 `psql --version` 提示找不到命令，可以使用完整路径检查版本；项目脚本也支持通过 Windows 安装注册表查找 `psql.exe`，不强制要求修改系统 `PATH`。
+```powershell
+psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -W
+```
 
-在项目根目录创建本地配置（已有 `.env` 时不要覆盖）：
+若 `psql` 不在 PATH，可使用安装路径。原开发电脑的示例：
+
+```powershell
+& 'D:\Program Files\PostgreSQL\17\bin\psql.exe' -h 127.0.0.1 -p 5432 -U postgres -d postgres -W
+```
+
+进入 SQL 终端后先列出数据库：
+
+```sql
+\l
+```
+
+**只有列表中不存在 `simulate_alipay` 时**，才执行创建命令（需要建库权限）：
+
+```sql
+CREATE DATABASE simulate_alipay;
+```
+
+连接项目库并检查，然后退出：
+
+```sql
+\connect simulate_alipay
+SELECT current_database(), version();
+\q
+```
+
+5. 创建本地配置，已有 `.env` 时保留：
 
 ```powershell
 if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 ```
 
-编辑 `.env` 中的连接信息：
+用编辑器填写根目录 `.env`：
 
-| 配置项 | 默认值 / 填写方式 |
+| 配置项 | 填写方式 |
 | --- | --- |
-| `PGHOST` | `127.0.0.1` |
-| `PGPORT` | `5432`，与安装时选择的端口一致 |
-| `PGDATABASE` | `simulate_alipay`，项目独立数据库名 |
-| `PGUSER` | `postgres`，或你准备的本地开发用户 |
-| `PGPASSWORD` | 填写该用户的密码，只保存在被 Git 忽略的 `.env` 中 |
-| `PG_BIN` | 可留空；查找不到客户端时，填写 PostgreSQL 的 `bin` 目录，不是 `psql.exe` 文件路径 |
+| `PGHOST` | 本机通常为 `127.0.0.1` |
+| `PGPORT` | 通常为 `5432` |
+| `PGDATABASE` | `simulate_alipay` |
+| `PGUSER` | `postgres` 或已授权的项目用户 |
+| `PGPASSWORD` | 数据库密码，仅保存在被 Git 忽略的 `.env` |
 
-非空同名环境变量优先于 `.env`。`PG_BIN` 路径可以包含空格。配置按字面文本读取，不执行变量插值；密码中的 `#` 也是字面字符，不要在配置值后追加行内注释。
+这些配置由 Python 后端读取；`psql` 不会自动读取项目 `.env`。非空同名进程环境变量优先。配置值不做变量插值，密码中的 `#` 是字面字符，不要添加行内注释。无需配置 `PG_BIN`，客户端路径直接写在命令中即可。
+
+6. 创建或升级业务表结构：
 
 ```powershell
-# 激活 Conda 环境（需先按 environment.yml 创建；注意开头的点和空格）
-. .\scripts\activate-dev.ps1
-
-# 创建项目数据库；已有同名数据库则保留，不删除数据
-.\scripts\init-db.ps1
-
-# 检查连接及临时表读写，验证后回滚
-.\scripts\test-db.ps1
-
-# 打开 SQL 终端；输入 \q 退出
-.\scripts\db-shell.ps1
+conda run -n simulate-alipay python -m alembic -c backend/alembic.ini upgrade head
+conda run -n simulate-alipay python -m alembic -c backend/alembic.ini current
 ```
 
-初始化要求配置用户能连接维护库 `postgres` 并具备创建数据库的权限。如果由管理员提前建好项目库，可直接执行连接检查。自动初始化和检查不交互询问密码，请先配置凭据；交互式 `db-shell.ps1` 可在没有配置密码时提示输入，也可使用 PostgreSQL 自身的密码文件。
+`upgrade head` 可重复执行，不会重复建表，也不清空现有业务数据。不要用删除数据库或回滚迁移的方式进行日常初始化。
 
-项目不负责启停共享的 PostgreSQL 服务。Windows 中可通过“服务”应用查看安装器创建的 PostgreSQL 服务；是否开机启动由该服务设置决定，不要随项目退出停止其他项目共用的数据库。
+7. 可选：导入历史验证样本。
 
-更多环境与排错说明见 [本地环境说明](LOCAL-SETUP.md)。数据库初始化只创建空数据库，业务表迁移、前后端依赖安装及应用启动仍待开发；目前不要执行尚不存在的 `npm run dev` 或后端入口命令。
+```powershell
+conda run -n simulate-alipay --cwd backend python -m app.seed
+```
+
+导入 5 只境内基金和 15 行历史净值，跳过已有基金，不创建用户、不发放本金、不开放交易。样本来自 2026-09-13 验证快照，不是实时行情。省略此步也能启动，基金列表为空。
+
+### 日常启动
+
+确认 PostgreSQL 服务已启动，然后打开两个终端，**都先进入仓库根目录**。
+
+终端 1：启动后端，保留实时日志。
+
+```powershell
+conda run -n simulate-alipay --no-capture-output --cwd backend python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+如果提示 `D:\code\python.exe: No module named uvicorn`，说明实际调用了 base 的解释器。项目环境已安装 Uvicorn，不要向 base 重复安装。原开发电脑可直接指定项目解释器，在根目录运行：
+
+```powershell
+# PowerShell
+& 'D:\code\envs\simulate-alipay\python.exe' -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+```
+
+```bat
+:: CMD / Anaconda Prompt
+D:\code\envs\simulate-alipay\python.exe -m uvicorn app.main:app --app-dir backend --host 127.0.0.1 --port 8000 --reload
+```
+
+其他电脑先用 `conda env list` 查找实际环境路径。已激活环境时可用 `python -c "import sys; print(sys.executable)"` 核实解释器；只有路径指向项目环境时，才直接用 `python`。以上两种终端的命令任选一种，不要重复启动。
+
+终端 2：启动前端。
+
+```powershell
+npm --prefix frontend run dev
+```
+
+- 应用：[http://127.0.0.1:5173](http://127.0.0.1:5173)
+- API 文档：[http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- 就绪检查：[http://127.0.0.1:8000/api/health/ready](http://127.0.0.1:8000/api/health/ready)
+
+两个终端分别按 `Ctrl+C` 停止应用，不停止其他项目共用的 PostgreSQL 服务。前后端仅监听本机；若 8000 或 5173 已占用，先检查是否已有本项目实例运行，不会自动切换端口。前端将 `/api` 代理到后端，数据库凭据不要放入 `VITE_*` 变量。
+
+### 更新代码后
+
+在根目录依次执行，任何一步报错时先处理该错误：
+
+```powershell
+git pull
+conda run -n simulate-alipay python -m pip install --no-user -r backend/requirements.txt
+npm --prefix frontend ci --cache .local/npm-cache
+conda run -n simulate-alipay python -m alembic -c backend/alembic.ini upgrade head
+```
+
+再按“日常启动”运行。更多测试及迁移说明见[开发指南](docs/开发指南.md)，原电脑路径和常见问题见[本地环境说明](LOCAL-SETUP.md)。
 
 ## 开发路线
 
 | 阶段 | 主要工作 | 完成标志 |
 | --- | --- | --- |
 | 0 | 核验数据源，冻结支持范围、交易规则与收益口径 | 数据和交易边界明确 |
-| 1 | 初始化前后端、数据库迁移、配置与启动脚本 | 本机可启动基础应用 |
+| 1 | 初始化前后端、数据库迁移、配置与命令行启动说明 | 本机可启动基础应用 |
 | 2 | 实现账户、会话、初始本金和界面骨架 | 注册登录及账户隔离可用 |
 | 3 | 实现基金同步、搜索、详情、图表与自选 | 基金浏览流程可用 |
 | 4 | 实现买入、资金预留、份额确认与撤单 | 完成一次正确的模拟买入 |
@@ -167,16 +240,21 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 | 6 | 完善交易记录、设置、导出、备份和异常状态 | 设计稿中的入口均可用 |
 | 7 | 联调、对账、恢复演练与本地交付 | 首版可稳定使用 |
 
-当前已完成设计定稿与规划，以上开发阶段尚未验收完成。
+阶段 1 的可启动工程和基础表已完成本机验收；原规划中的交易规则、订单、批次、流水及任务表尚未建立，将随相应业务规则一起迁移。阶段 0 的完整交易规则仍待核验，阶段 2～7 尚未完成。
+
+已完成第一轮公开数据源样本验证：6 只基金共 60 个日期的净值与基金公司官网一致。支付宝全量在售覆盖及完整交易规则尚未验证，暂不开放模拟买卖。详见[数据源验证报告](docs/数据源验证报告.md)，其中包含结果、来源、待办和复现命令。
 
 ## 仓库结构
 
 ```text
 simulate-alipay/
+├── frontend/                  # React / TypeScript / Vite
+├── backend/                   # FastAPI、模型、Alembic 迁移和测试
+├── data/validation/           # 小量历史验证快照，非实时行情
 ├── design/                    # 设计源文件、SVG、预览和交付记录
 │   └── v2/                    # 已定稿的第二版设计
 ├── docs/                      # 功能清单与开发规划
-├── scripts/                   # Python 激活、数据库初始化/连接/检查脚本
+├── scripts/                   # 独立数据源验证工具（启动应用不依赖）
 ├── .env.example               # 可提交的数据库连接配置模板
 ├── environment.yml            # Conda 环境定义（Python / pip）
 ├── .gitignore
@@ -184,7 +262,7 @@ simulate-alipay/
 └── README.md
 ```
 
-前端与后端业务目录将在工程初始化阶段创建。
+当前仅提供基础接口和样本浏览，完整业务按开发路线逐阶段实现。
 
 ## 提交到 GitHub 前
 

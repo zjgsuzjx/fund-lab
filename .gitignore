@@ -11,7 +11,6 @@ __pycache__/
 .playwright-mcp/
 playwright-report/
 test-results/
-scripts/test-playwright-mcp.cjs
 
 # Dependencies and generated output
 node_modules/
