@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
-from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, MetaData, Numeric, String, Integer, JSON, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, MetaData, Numeric, String, Integer, JSON, UniqueConstraint, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -23,10 +23,12 @@ class User(Base):
 
 class SimulationAccount(Base):
     __tablename__ = 'simulation_accounts'
-    __table_args__ = (CheckConstraint('available_cash >= 0', name='nonnegative_cash'),)
+    __table_args__ = (CheckConstraint('available_cash >= 0', name='nonnegative_cash'),
+                      CheckConstraint('reserved_cash >= 0', name='nonnegative_reserved'))
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), unique=True)
     available_cash: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    reserved_cash: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -79,6 +81,9 @@ class CashLedger(Base):
     kind: Mapped[str] = mapped_column(String(30))
     amount: Mapped[Decimal] = mapped_column(Numeric(20, 2))
     balance_after: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    available_delta: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    reserved_delta: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    reserved_after: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -106,3 +111,39 @@ class FundSyncRun(Base):
     message: Mapped[str] = mapped_column(String(500), default='')
     evidence: Mapped[list] = mapped_column(JSON, default=list)
     conflicts: Mapped[list] = mapped_column(JSON, default=list)
+
+
+class BuyOrder(Base):
+    __tablename__ = 'buy_orders'
+    __table_args__ = (UniqueConstraint('account_id', 'request_key'),
+                      CheckConstraint("status IN ('pending', 'confirmed', 'cancelled')", name='valid_status'),
+                      CheckConstraint('amount > 0 AND fee >= 0 AND net_amount > 0 AND amount = fee + net_amount', name='valid_amounts'),
+                      CheckConstraint("(status = 'confirmed' AND confirmed_nav IS NOT NULL AND shares IS NOT NULL AND confirmed_nav > 0 AND shares > 0 AND completed_at IS NOT NULL) OR (status != 'confirmed' AND confirmed_nav IS NULL AND shares IS NULL)", name='confirmed_values'))
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
+    fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'))
+    request_key: Mapped[UUID] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), index=True, default='pending')
+    amount: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    fee: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    net_amount: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    trade_date: Mapped[date] = mapped_column()
+    confirmation_date: Mapped[date] = mapped_column()
+    cancel_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    rule_snapshot: Mapped[dict] = mapped_column(JSON)
+    confirmed_nav: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    shares: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PositionLot(Base):
+    __tablename__ = 'position_lots'
+    __table_args__ = (CheckConstraint('shares > 0 AND cost > 0', name='positive_position'),)
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
+    order_id: Mapped[UUID] = mapped_column(ForeignKey('buy_orders.id'), unique=True)
+    fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'))
+    shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    cost: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    confirmation_date: Mapped[date] = mapped_column()

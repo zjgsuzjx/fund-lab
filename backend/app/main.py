@@ -1,4 +1,6 @@
 from contextlib import asynccontextmanager
+import asyncio
+import logging
 from pathlib import Path
 from typing import Annotated
 
@@ -15,17 +17,35 @@ from .auth import router as auth_router
 from .db import get_engine, get_session
 from .models import Fund
 from .funds import router as funds_router
+from .trades import router as trades_router
+from .settle_orders import settle_pending
 
 BACKEND = Path(__file__).resolve().parents[1]
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    yield
-    get_engine().dispose()
+    stop = asyncio.Event()
+    async def worker():
+        while not stop.is_set():
+            try:
+                await asyncio.to_thread(settle_pending)
+            except Exception:
+                logging.getLogger(__name__).warning('Settlement postponed; check database and migrations.')
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=60)
+            except TimeoutError:
+                pass
+    task = asyncio.create_task(worker())
+    try:
+        yield
+    finally:
+        stop.set()
+        await task
+        get_engine().dispose()
 
 
-app = FastAPI(title='Fund Lab API', version='0.3.0', lifespan=lifespan)
+app = FastAPI(title='Fund Lab API', version='0.4.0', lifespan=lifespan)
 
 
 @app.exception_handler(SQLAlchemyError)
@@ -53,11 +73,12 @@ def ready(session: Annotated[Session, Depends(get_session)]):
 
 app.include_router(auth_router)
 app.include_router(funds_router)
+app.include_router(trades_router)
 
 
 @app.middleware('http')
 async def private_responses(request: Request, call_next):
     response = await call_next(request)
-    if request.url.path.startswith(('/api/auth', '/api/account', '/api/funds', '/api/watchlist', '/api/data')):
+    if request.url.path.startswith('/api/'):
         response.headers['Cache-Control'] = 'no-store'
     return response

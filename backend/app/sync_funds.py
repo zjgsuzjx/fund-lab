@@ -137,6 +137,8 @@ def apply_bundle(db, fund, bundle):
                            dividend_note=row.get('dividend_note')))
             inserted += 1
     evidence = db.get(FundRuleEvidence, fund.code)
+    if evidence and evidence.subscription_fees != bundle['official']['subscription_fees']:
+        fund.trade_enabled = False
     if not evidence:
         evidence = FundRuleEvidence(fund_code=fund.code)
         db.add(evidence)
@@ -148,7 +150,7 @@ def apply_bundle(db, fund, bundle):
     evidence.is_snapshot = False
     fund.name, fund.category = bundle['directory']['name'], bundle['directory']['type']
     fund.source_url, fund.source_observed_at = bundle['source_url'], bundle['observed_at']
-    fund.last_sync_at, fund.is_sample, fund.trade_enabled = bundle['observed_at'], False, False
+    fund.last_sync_at, fund.is_sample = bundle['observed_at'], False
     fund.history_complete = fund.history_complete or bundle['history_complete']
     db.flush()
     return inserted, unchanged
@@ -175,9 +177,10 @@ def synchronize(db, code, *, full=False, transport_factory=Transport):
         with db.begin_nested():
             run.inserted, run.unchanged = apply_bundle(db, fund, bundle)
         run.status = 'success'
-        run.message = '净值与官网交叉核对通过；模拟交易保持关闭。'
+        run.message = '净值与官网交叉核对通过；是否可模拟买入由已核验规则控制。'
     except (ValueError, KeyError, TypeError, ArithmeticError, OSError) as error:
         run.status = 'conflict' if isinstance(error, RevisionConflict) else 'failed'
+        fund.trade_enabled = False
         run.conflicts = error.conflicts if isinstance(error, RevisionConflict) else []
         run.message = str(error) if isinstance(error, SourceFailure) else '来源数据校验失败，已保留已有数据。'
     run.evidence = transport.evidence if transport else []

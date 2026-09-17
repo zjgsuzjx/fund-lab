@@ -117,7 +117,7 @@ def register(body: Credentials, request: Request, response: Response, db: DB):
         db.add(account)
         db.flush()
         db.add(CashLedger(account_id=account.id, event_key=f'initial:{account.id}',
-                          kind='initial_capital', amount=INITIAL_CASH, balance_after=INITIAL_CASH))
+                          kind='initial_capital', amount=INITIAL_CASH, balance_after=INITIAL_CASH, available_delta=INITIAL_CASH))
         # Commit all three records together with the first session.
         issue_session(db, user, request, response, body.remember)
     except IntegrityError:
@@ -158,7 +158,9 @@ def owned_account(db: Session, user: User):
 @router.get('/account')
 def account(user: CurrentUser, db: DB):
     row = owned_account(db, user)
-    return {'id': str(row.id), 'available_cash': str(row.available_cash), 'created_at': row.created_at}
+    from .trades import lock_account, portfolio
+    row = lock_account(db, row.id)
+    return {'id': str(row.id), 'created_at': row.created_at, **portfolio(db, row)}
 
 
 @router.get('/account/ledger')
@@ -166,7 +168,8 @@ def ledger(user: CurrentUser, db: DB):
     row = owned_account(db, user)
     entries = db.scalars(select(CashLedger).where(CashLedger.account_id == row.id).order_by(CashLedger.created_at, CashLedger.id)).all()
     return {'items': [{'id': str(e.id), 'kind': e.kind, 'amount': str(e.amount),
-                       'balance_after': str(e.balance_after), 'created_at': e.created_at} for e in entries]}
+                       'balance_after': str(e.balance_after), 'available_delta': str(e.available_delta),
+                       'reserved_delta': str(e.reserved_delta), 'reserved_after': str(e.reserved_after), 'created_at': e.created_at} for e in entries]}
 
 
 class PasswordChange(BaseModel):

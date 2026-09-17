@@ -7,6 +7,7 @@ export type Fund = {
 export type FundPage = { items: Fund[]; total: number; page: number; page_size: number }
 export type Health = { status: string; database: string; schema: string; fund_count: number }
 export type FundDetail = Fund & {
+  simulation_rule?: SimulationRule;
   source_url: string; nav_source_url: string; earliest_nav_date: string | null; history_count: number;
   rules: { status: string; source_url: string; observed_at: string | null; is_snapshot: boolean;
     subscription_fees: string[][]; redemption_fees: string[][]; ongoing_fees: string[][];
@@ -17,8 +18,22 @@ export type NavHistory = { items: { date: string; unit_nav: string; dividend_not
 export type SyncRuns = { items: { id: string; fund_code: string; status: string; started_at: string;
   finished_at: string | null; inserted: number; unchanged: number; message: string }[] }
 export type User = { id: string; username: string; created_at: string }
-export type Account = { id: string; available_cash: string; created_at: string }
-export type Ledger = { items: { id: string; kind: string; amount: string; balance_after: string; created_at: string }[] }
+export type Account = { id: string; available_cash: string; reserved_cash: string; total_assets: string | null; created_at: string }
+export type Ledger = { items: { id: string; kind: string; amount: string; balance_after: string; available_delta: string; reserved_delta: string; reserved_after: string; created_at: string }[] }
+export type SimulationRule = { version: string; name: string; minimum: string; scope: string; sources: { url: string; published_on: string; pages?: string }[] }
+export type BuyQuote = { fund_code: string; fund_name: string; amount: string; fee: string; net_amount: string;
+  fee_label: string; available_cash: string; trade_date: string; confirmation_date: string; cancel_until: string;
+  rule_version: string; rule: SimulationRule }
+export type BuyRequest = { fund_code: string; amount: string; request_key: string; rule_version: string; trade_date: string }
+export type Order = { id: string; fund_code: string; fund_name: string; status: 'pending' | 'confirmed' | 'cancelled';
+  amount: string; fee: string; net_amount: string; trade_date: string; confirmation_date: string; cancel_until: string;
+  can_cancel: boolean; confirmed_nav: string | null; shares: string | null; created_at: string; completed_at: string | null;
+  rule: SimulationRule; wait_reason: string }
+export type Orders = { items: Order[]; total: number; page: number; page_size: number }
+export type Portfolio = { items: { fund_code: string; fund_name: string; shares: string; cost: string;
+  market_value: string | null; nav_date: string | null; unit_nav: string | null;
+  lots: { order_id: string; shares: string; cost: string; confirmation_date: string }[] }[];
+  available_cash: string; reserved_cash: string; total_assets: string | null; market_value: string | null; valuation_note: string }
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
 }

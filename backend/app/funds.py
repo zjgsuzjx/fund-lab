@@ -13,6 +13,8 @@ from sqlalchemy.dialects.postgresql import insert
 from .auth import COOKIE, DB, CurrentUser, current_user, write_guard
 from .models import Fund, FundNav, FundRuleEvidence, FundSyncRun, Watchlist
 
+from .trade_rules import disabled_reason, rule_snapshot
+
 router = APIRouter(prefix='/api')
 Period = Literal['1m', '3m', '1y', 'all']
 
@@ -61,9 +63,9 @@ def serialize_fund(fund, navs, watched=False):
             'nav_date': latest.nav_date if latest else None, 'unit_nav': str(latest.unit_nav) if latest else None,
             'year_change': year_change, 'change_basis': '单位净值涨跌，不含分红再投资',
             'source_observed_at': fund.source_observed_at, 'last_sync_at': fund.last_sync_at,
-            'is_sample': fund.is_sample, 'trade_enabled': False, 'is_watched': watched,
+            'is_sample': fund.is_sample, 'trade_enabled': not disabled_reason(fund), 'is_watched': watched,
             'history_complete': fund.history_complete,
-            'trade_disabled_reason': '交易规则与结算功能尚未完成核验，暂不开放模拟买入。'}
+            'trade_disabled_reason': disabled_reason(fund)}
 
 
 @router.get('/funds')
@@ -118,6 +120,10 @@ def detail(code: str, db: DB, request: Request):
                          'ongoing_fees': evidence.ongoing_fees if evidence else [],
                          'minimum_purchase': None, 'confirmation': None, 'arrival': None,
                          'note': '基金公司公开标准费率，仅供了解；非支付宝渠道优惠费率。起购限制、规则生效日、确认与到账日历仍待核验。'})
+    if not disabled_reason(fund):
+        result['rules'].update(status='simulation_verified', minimum_purchase='1.00 元',
+                               confirmation='T+1 起，等待正式净值', note=rule_snapshot()['scope'])
+        result['simulation_rule'] = rule_snapshot()
     return result
 
 

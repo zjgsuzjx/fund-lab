@@ -3,11 +3,12 @@ import { api, ApiError, type User, type Account, type Ledger } from './api'
 import Discover from './Discover'
 import FundDetails from './FundDetails'
 import './market.css'
+import { BuyPage, OrderPage, TradingOverview } from './Trading'
 
-type Page = 'login' | 'register' | 'account' | 'discover' | `fund/${string}`
+type Page = 'login' | 'register' | 'account' | 'discover' | 'holdings' | 'orders' | `fund/${string}` | `buy/${string}` | `pending/${string}` | `order/${string}`
 const route = (): Page => {
   const value = location.hash.slice(1).split('?')[0]
-  return ['login', 'register', 'account', 'discover'].includes(value) || /^fund\/[^/]+$/.test(value) ? value as Page : 'discover'
+  return ['login', 'register', 'account', 'discover', 'holdings', 'orders'].includes(value) || /^(fund|buy|pending|order)\/[^/]+$/.test(value) ? value as Page : 'discover'
 }
 const go = (page: Page) => { location.hash = page }
 const money = (value: string) => Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -49,7 +50,7 @@ export default function App() {
   }, [check])
   useEffect(() => {
     if (checking || checkError) return
-    if (page === 'account' && !user) { setNotice('请先登录后查看账户。'); go('login') }
+    if ((['account', 'holdings', 'orders'].includes(page) || /^(buy|pending|order)\//.test(page)) && !user) { setNotice('请先登录后查看账户。'); go('login') }
     if ((page === 'login' || page === 'register') && user) go('account')
   }, [page, user, checking, checkError])
   // Recheck when returning to a tab, so logout in another tab clears private data.
@@ -60,8 +61,8 @@ export default function App() {
   }, [check])
   function signedOut(message: string) { authVersion.current++; setUser(null); setNotice(message); setPage('login'); go('login') }
   return <>
-    {page !== 'discover' && !page.startsWith('fund/') && <nav className="app-nav" aria-label="主导航"><a href="#discover">基金练习室</a><div><a href="#discover">发现</a><a href={user ? '#account' : '#login'}>{user ? '我的账户' : '登录 / 注册'}</a></div></nav>}
-    {checking ? <main className="account-shell"><p role="status">正在恢复登录状态…</p></main> : checkError ? <main className="account-shell"><p className="error" role="alert">{checkError}</p><button className="primary" onClick={() => void check()}>重新连接</button></main> : page === 'discover' ? <Discover key={user?.id ?? 'guest'} user={user} onUnauthorized={signedOut} /> : page.startsWith('fund/') ? <FundDetails key={`${user?.id ?? 'guest'}:${page}`} code={page.slice(5)} user={user} onUnauthorized={signedOut} /> : page === 'account' && user ? <AccountPage user={user} signedOut={signedOut} /> : <AuthForm key={page} register={page === 'register'} notice={notice} onSuccess={value => { authVersion.current++; setUser(value); setNotice(''); setPage('discover'); go('discover') }} />}
+    {['login', 'register'].includes(page) && <nav className="app-nav" aria-label="主导航"><a href="#discover">基金练习室</a><div><a href="#discover">发现</a><a href={user ? '#account' : '#login'}>{user ? '我的账户' : '登录 / 注册'}</a></div></nav>}
+    {checking ? <main className="account-shell"><p role="status">正在恢复登录状态…</p></main> : checkError ? <main className="account-shell"><p className="error" role="alert">{checkError}</p><button className="primary" onClick={() => void check()}>重新连接</button></main> : page === 'discover' ? <Discover key={user?.id ?? 'guest'} user={user} onUnauthorized={signedOut} /> : page.startsWith('fund/') ? <FundDetails key={`${user?.id ?? 'guest'}:${page}`} code={page.slice(5)} user={user} onUnauthorized={signedOut} /> : page.startsWith('buy/') && user ? <BuyPage key={`${user.id}:${page}`} code={page.slice(4)} user={user} onUnauthorized={signedOut} /> : /^(pending|order)\//.test(page) && user ? <OrderPage key={`${user.id}:${page}`} id={page.split('/')[1]} pendingPage={page.startsWith('pending/')} user={user} onUnauthorized={signedOut} /> : ['holdings', 'orders'].includes(page) && user ? <TradingOverview key={`${user.id}:${page}`} holdings={page === 'holdings'} user={user} onUnauthorized={signedOut} /> : page === 'account' && user ? <AccountPage user={user} signedOut={signedOut} /> : <AuthForm key={page} register={page === 'register'} notice={notice} onSuccess={value => { authVersion.current++; setUser(value); setNotice(''); setPage('discover'); go('discover') }} />}
   </>
 }
 
@@ -85,7 +86,7 @@ function AuthForm({ register, notice, onSuccess }: { register: boolean; notice: 
     finally { pending.current = false; setBusy(false) }
   }
   return <main className="account-shell">
-    <p className="account-tag">模拟账户</p><h1>{register ? '创建练习账户' : '欢迎回来'}</h1><p className="subtitle">{register ? '从 100,000 元虚拟资金开始' : '登录后，继续你的基金练习'}</p>
+    <h1>{register ? '创建练习账户' : '欢迎回来'}</h1><p className="subtitle">{register ? '从 100,000 元虚拟资金开始' : '登录后，继续你的基金练习'}</p>
     {register ? <aside className="soft-card"><strong>你的第一笔练习本金</strong><b>100,000.00 元 · 无需充值</b></aside> : <aside className="welcome-card"><h2>基金练习室</h2><p>让每一次练习，都有迹可循。</p><small>虚拟资金 / 独立账户 / 本地保存</small></aside>}
     {notice && <p role="status" className="soft-card">{notice}</p>}
     <form onSubmit={submit} className="account-form">
@@ -100,7 +101,7 @@ function AuthForm({ register, notice, onSuccess }: { register: boolean; notice: 
     </form>
     <a className="secondary" href={register ? '#login' : '#register'}>{register ? '已有账户？立即登录' : '还没有账户？创建账户'}</a>
     {!register && <details className="instructions"><summary>登录帮助</summary><p>请使用本项目注册的用户名和密码，无需支付宝账号。用户名不区分大小写。忘记密码时请联系本机管理员核验身份；当前版本没有在线找回密码功能。如注册响应中断，可直接尝试登录，已创建账户不会再次发放本金。</p></details>}
-    <aside className="soft-card"><strong>{register ? '你将获得' : '账户只用于本地模拟'}</strong><p>{register ? '独立账户与模拟资金流水。持仓与交易功能将逐步开放。' : '无需支付宝账号，也无需绑定银行卡。当前版本在这台电脑上保存练习记录。'}</p></aside>
+    <aside className="soft-card"><strong>{register ? '你将获得' : '账户只用于本地模拟'}</strong><p>{register ? '独立账户、模拟资金流水与已开放基金的买入练习。' : '无需支付宝账号，也无需绑定银行卡。当前版本在这台电脑上保存练习记录。'}</p></aside>
     <Instructions /><footer>这是独立模拟产品，与支付宝无关联</footer>
   </main>
 }
@@ -143,17 +144,17 @@ function AccountPage({ user, signedOut }: { user: User; signedOut: (message: str
       else setError((reason as Error).message)
     } finally { setBusy(false) }
   }
-  return <main className="account-shell"><p className="account-tag">模拟账户</p><h1>我的账户</h1><p className="subtitle">管理本地账户与练习数据</p>
+  return <main className="account-shell account-page"><h1>我的账户</h1><p className="subtitle">管理本地账户与练习数据</p>
     <section className="profile-card"><div className="profile"><span className="avatar">{user.username[0].toUpperCase()}</span><div><h2>{user.username}</h2><small>本地账户 · 已登录</small></div></div>
       {data && <><p className="account-row"><span>初始模拟本金</span><strong>{money(data.ledger.items.find(e => e.kind === 'initial_capital')?.amount ?? '0')} 元</strong></p><p className="account-row"><span>可用虚拟资金</span><strong>{money(data.account.available_cash)} 元</strong></p></>}
     </section>
     {loading && <p role="status">正在加载账户…</p>}
     {error && <div className="error" role="alert">{error}<button onClick={() => setRefresh(value => value + 1)} disabled={busy}>重新加载</button></div>}
-    <h2 className="account-heading">账户与数据</h2><section className="settings-card"><button onClick={() => setChanging(!changing)} aria-expanded={changing}>修改密码<span>›</span></button><div>导出交易记录<span>交易功能开放后可用</span></div><div>备份练习数据<span>暂未开放</span></div><details><summary>数据保存位置<span>本机 ›</span></summary><p>数据保存在运行后端服务的本机 PostgreSQL 数据库中，清理浏览器不会删除账户数据。</p></details></section>
+    <h2 className="account-heading">账户与数据</h2><section className="settings-card"><button onClick={() => setChanging(!changing)} aria-expanded={changing}>修改密码<span>›</span></button><div>导出交易记录<span>暂未开放</span></div><div>备份练习数据<span>暂未开放</span></div><details><summary>数据保存位置<span>本机 ›</span></summary><p>数据保存在运行后端服务的本机 PostgreSQL 数据库中，清理浏览器不会删除账户数据。</p></details></section>
     {changing && <form onSubmit={changePassword} className="account-form"><fieldset disabled={busy}><Password label="当前密码" name="current_password" autoComplete="current-password" /><Password label="新密码" name="new_password" /><Password label="确认新密码" name="confirm" /><button className="primary">{busy ? '正在提交…' : '修改密码并重新登录'}</button></fieldset></form>}
-    <h2 className="account-heading">资金流水</h2><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{entry.kind === 'initial_capital' ? '初始模拟本金' : entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>+{money(entry.amount)}</strong><small>余额 {money(entry.balance_after)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section>
+    <h2 className="account-heading">资金流水</h2><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>在途变动 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section>
     <aside className="soft-card"><strong>换电脑前，先备份</strong><p>本地账户不自动同步到其他设备。<br />清理数据前请保留一份数据库备份。</p></aside><Instructions />
     <button className="secondary" disabled={busy} onClick={() => void logout()}>{busy ? '正在处理…' : '退出登录'}</button>
-    <nav className="bottom-nav" aria-label="账户导航"><a href="#discover">发现</a><span title="尚未开放">持仓</span><span title="尚未开放">交易</span><a href="#account" aria-current="page">我的</a></nav>
+    <nav className="bottom-nav" aria-label="账户导航"><a href="#discover">发现</a><a href="#holdings">持仓</a><a href="#orders">交易</a><a href="#account" aria-current="page">我的</a></nav>
   </main>
 }

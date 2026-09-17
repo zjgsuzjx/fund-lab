@@ -49,6 +49,7 @@ def test_seed_is_repeatable_and_preserves_existing_rows(db):
     nav_count = db.scalar(select(func.count()).select_from(FundNav))
     fund = db.get(Fund, '000147')
     fund.name = 'Preserve later edits'
+    fund.trade_enabled = False
     db.flush()
     seed(db)
     assert db.scalar(select(func.count()).select_from(Fund)) == count
@@ -61,6 +62,8 @@ def test_seed_is_repeatable_and_preserves_existing_rows(db):
 @pytest.mark.integration
 def test_api_reads_postgres_search_and_pagination(db):
     seed(db)
+    db.get(Fund, '000147').trade_enabled = False
+    db.flush()
     app.dependency_overrides[get_session] = lambda: db
     try:
         with TestClient(app) as client:
