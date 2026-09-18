@@ -6,11 +6,11 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import func, select, text
+from sqlalchemy import func, select, text, literal, union_all
 from sqlalchemy.orm import Session
 
 from .auth import CurrentUser, DB, owned_account, write_guard
-from .models import BuyOrder, CashLedger, Fund, FundNav, FundSyncRun, PositionLot, SimulationAccount
+from .models import BuyOrder, CashLedger, Fund, FundNav, FundSyncRun, PositionLot, SimulationAccount, SellOrder, SellAllocation
 from .trade_rules import CN, RULE, disabled_reason, fees, rounded, rule_snapshot, schedule, utcnow
 
 router = APIRouter(prefix='/api')
@@ -78,7 +78,8 @@ def add_ledger(db, account, order, kind, available_delta, reserved_delta, now):
     db.add(CashLedger(account_id=account.id, event_key=f'{kind}:{order.id}', kind=kind,
                       amount=order.amount, balance_after=account.available_cash,
                       available_delta=available_delta, reserved_delta=reserved_delta,
-                      reserved_after=account.reserved_cash, created_at=now))
+                      reserved_after=account.reserved_cash, redemption_after=account.redemption_cash,
+                      created_at=now))
 
 
 def create_buy(db, account_id, body, clock=utcnow):
@@ -147,14 +148,15 @@ def settle_buy(db, account_id, order_id, clock=utcnow):
         raise HTTPException(409, '份额精度异常，保留在途资金，等待核验。')
     order.status, order.completed_at = 'confirmed', now
     db.add(PositionLot(account_id=account.id, order_id=order.id, fund_code=order.fund_code,
-                       shares=order.shares, cost=order.amount, confirmation_date=order.confirmation_date))
+                       shares=order.shares, cost=order.amount, remaining_shares=order.shares,
+                       remaining_cost=order.amount, confirmation_date=order.confirmation_date))
     add_ledger(db, account, order, 'buy_confirmed', Decimal('0'), -order.amount, now)
     db.flush()
     return order
 
 
 def serialize_order(db, order, now):
-    return {'id': str(order.id), 'fund_code': order.fund_code, 'fund_name': db.get(Fund, order.fund_code).name,
+    return {'id': str(order.id), 'kind': 'buy', 'fund_code': order.fund_code, 'fund_name': db.get(Fund, order.fund_code).name,
             'status': order.status, 'amount': str(order.amount), 'fee': str(order.fee), 'net_amount': str(order.net_amount),
             'trade_date': order.trade_date, 'confirmation_date': order.confirmation_date,
             'cancel_until': order.cancel_until, 'can_cancel': order.status == 'pending' and now < order.cancel_until,
@@ -164,30 +166,50 @@ def serialize_order(db, order, now):
             'wait_reason': '等待确认日及对应正式净值；数据缺失或同步异常时继续等待。' if order.status == 'pending' else ''}
 
 
-def portfolio(db, account):
-    lots = db.scalars(select(PositionLot).where(PositionLot.account_id == account.id)).all()
+def portfolio(db, account, now=None):
+    from .redemptions import lots_event, sale_context
+    now = now or utcnow()
+    lots = db.scalars(select(PositionLot).where(PositionLot.account_id == account.id, PositionLot.remaining_shares > 0)).all()
     grouped = {}
     for lot in lots:
-        row = grouped.setdefault(lot.fund_code, {'shares': Decimal(0), 'cost': Decimal(0), 'lots': []})
-        row['shares'] += lot.shares
-        row['cost'] += lot.cost
-        row['lots'].append({'order_id': str(lot.order_id), 'shares': str(lot.shares), 'cost': str(lot.cost),
+        row = grouped.setdefault(lot.fund_code, {'shares': Decimal(0), 'cost': Decimal(0), 'frozen': Decimal(0), 'lots': []})
+        row['shares'] += lot.remaining_shares
+        row['cost'] += lot.remaining_cost
+        row['frozen'] += lot.frozen_shares
+        row['lots'].append({'order_id': str(lot.order_id), 'shares': str(lot.remaining_shares),
+                            'frozen_shares': str(lot.frozen_shares), 'cost': str(lot.remaining_cost),
                             'confirmation_date': lot.confirmation_date})
-    items, total = [], Decimal('0.00')
+    items, total, remaining_cost = [], Decimal('0.00'), Decimal('0.00')
+    event_warning = lots_event(db, lots, now.astimezone(CN).date())
     for code, row in grouped.items():
-        nav = db.scalar(select(FundNav).where(FundNav.fund_code == code).order_by(FundNav.nav_date.desc()).limit(1))
+        nav = db.scalar(select(FundNav).where(FundNav.fund_code == code, FundNav.nav_date <= now.astimezone(CN).date())
+                        .order_by(FundNav.nav_date.desc()).limit(1))
         value = rounded(row['shares'] * nav.unit_nav) if nav else None
         if value is not None:
             total += value
+        remaining_cost += row['cost']
+        context, _ = sale_context(db, account.id, code, now)
         items.append({'fund_code': code, 'fund_name': db.get(Fund, code).name, 'shares': str(row['shares']),
+                      'frozen_shares': str(row['frozen']), 'available_shares': context['available_shares'],
+                      'sell_disabled_reason': context['disabled_reason'],
                       'cost': str(row['cost']), 'market_value': str(value) if value is not None else None,
+                      'holding_profit': str(value - row['cost']) if value is not None and not event_warning else None,
                       'nav_date': nav.nav_date if nav else None, 'unit_nav': str(nav.unit_nav) if nav else None,
                       'lots': row['lots']})
     complete = all(i['market_value'] is not None for i in items)
+    assets = account.available_cash + account.reserved_cash + account.redemption_cash + total
+    initial = db.scalar(select(func.coalesce(func.sum(CashLedger.amount), 0)).where(
+        CashLedger.account_id == account.id, CashLedger.kind == 'initial_capital'))
+    realized = db.scalar(select(func.coalesce(func.sum(SellAllocation.net_amount - SellAllocation.cost), 0))
+        .join(SellOrder, SellAllocation.order_id == SellOrder.id).where(SellOrder.account_id == account.id,
+        SellOrder.status.in_(['confirmed', 'paid'])))
     return {'items': items, 'available_cash': str(account.available_cash), 'reserved_cash': str(account.reserved_cash),
-            'market_value': str(total) if complete else None,
-            'total_assets': str(account.available_cash + account.reserved_cash + total) if complete else None,
-            'valuation_note': '持仓市值按最新已保存单位净值估算。当前不含分红权益与复权收益，卖出暂未开放。'}
+            'redemption_cash': str(account.redemption_cash), 'market_value': str(total) if complete else None,
+            'total_assets': str(assets) if complete else None,
+            'total_profit': str(assets - initial) if complete and not event_warning else None,
+            'holding_profit': str(total - remaining_cost) if complete and not event_warning else None,
+            'realized_profit': str(realized),
+            'valuation_note': event_warning or '市值按最新已保存正式净值估算；收益为净值口径，含交易费，不含未处理分红权益。'}
 
 
 @router.post('/trades/quote', dependencies=[Depends(write_guard)])
@@ -204,15 +226,25 @@ def submit(body: BuyInput, user: CurrentUser, db: DB, clock: ClockFunction):
 
 @router.get('/orders')
 def orders(user: CurrentUser, db: DB, now: Clock,
-           status: Literal['all', 'pending', 'confirmed', 'cancelled'] = 'all',
+           status: Literal['all', 'pending', 'confirmed', 'paid', 'cancelled'] = 'all',
+           kind: Literal['all', 'buy', 'sell'] = 'all',
            page: Annotated[int, Query(ge=1)] = 1):
+    from .redemptions import serialize_sell
     account = owned_account(db, user)
-    query = select(BuyOrder).where(BuyOrder.account_id == account.id)
-    if status != 'all':
-        query = query.where(BuyOrder.status == status)
-    total = db.scalar(select(func.count()).select_from(query.subquery()))
-    rows = db.scalars(query.order_by(BuyOrder.created_at.desc(), BuyOrder.id).offset((page - 1) * 20).limit(20)).all()
-    return {'items': [serialize_order(db, row, now) for row in rows], 'total': total, 'page': page, 'page_size': 20}
+    queries = []
+    for model, label in ((BuyOrder, 'buy'), (SellOrder, 'sell')):
+        if kind != 'all' and kind != label:
+            continue
+        q = select(model.id, model.created_at, literal(label).label('kind')).where(model.account_id == account.id)
+        if status != 'all':
+            q = q.where(model.status == status)
+        queries.append(q)
+    combined = union_all(*queries).subquery()
+    total = db.scalar(select(func.count()).select_from(combined))
+    rows = db.execute(select(combined).order_by(combined.c.created_at.desc(), combined.c.id).offset((page - 1) * 20).limit(20)).all()
+    items = [serialize_order(db, db.get(BuyOrder, r.id), now) if r.kind == 'buy'
+             else serialize_sell(db, db.get(SellOrder, r.id), now) for r in rows]
+    return {'items': items, 'total': total, 'page': page, 'page_size': 20}
 
 
 @router.get('/orders/{order_id}')
@@ -235,8 +267,8 @@ def refresh(order_id: UUID, user: CurrentUser, db: DB, clock: ClockFunction):
 
 
 @router.get('/holdings')
-def holdings(user: CurrentUser, db: DB):
+def holdings(user: CurrentUser, db: DB, now: Clock):
     account = owned_account(db, user)
     # Consistent cash/position snapshot while the settlement worker changes both.
     account = lock_account(db, account.id)
-    return portfolio(db, account)
+    return portfolio(db, account, now)

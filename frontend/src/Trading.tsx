@@ -3,16 +3,17 @@ import { api, ApiError, type Account, type BuyQuote, type BuyRequest, type FundD
 import { formatMoney, MarketNavigation } from './MarketShared'
 import './trading.css'
 
-type Props = { user: User; onUnauthorized: (message: string) => void }
-const time = (value: string) => new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+export type Props = { user: User; onUnauthorized: (message: string) => void }
+export const time = (value: string) => new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+export const sellStatusName = { pending: '卖出待确认', confirmed: '赎回在途', paid: '资金已到账', cancelled: '卖出已撤销' }
 const statusName = { pending: '买入待确认', confirmed: '买入已确认', cancelled: '申请已撤销' }
-const money = (value: string | null) => value === null ? '—' : formatMoney(value)
-function Row({ label, children }: { label: string; children: ReactNode }) { return <div className="trade-row"><span>{label}</span><strong>{children}</strong></div> }
-function Heading({ title, back = 'discover', children }: { title: string; back?: string; children?: ReactNode }) {
+export const money = (value: string | null) => value === null ? '—' : formatMoney(value)
+export function Row({ label, children }: { label: string; children: ReactNode }) { return <div className="trade-row"><span>{label}</span><strong>{children}</strong></div> }
+export function Heading({ title, back = 'discover', children }: { title: string; back?: string; children?: ReactNode }) {
   return <><div className="detail-title"><a href={`#${back}`} aria-label="返回">‹</a><h1>{title}</h1></div><p className="trade-subtitle">{children}</p></>
 }
-function RuleNote({ rule }: { rule: SimulationRule }) { return <details className="trade-rules"><summary>{rule.name} · 规则与来源</summary><p>{rule.scope}</p>{rule.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.pages ? `招募说明书，第 ${source.pages} 页` : '交易日历来源'} ↗</a>)}</details> }
-function uuid() {
+export function RuleNote({ rule }: { rule: SimulationRule }) { return <details className="trade-rules"><summary>{rule.name} · 规则与来源</summary><p>{rule.scope}</p>{rule.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.pages ? `招募说明书，第 ${source.pages} 页` : '交易日历来源'} ↗</a>)}</details> }
+export function uuid() {
   const bytes = crypto.getRandomValues(new Uint8Array(16)); bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128
   const hex = [...bytes].map(b => b.toString(16).padStart(2, '0')).join('')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`
@@ -101,10 +102,10 @@ export function BuyPage({ code, user, onUnauthorized }: Props & { code: string }
 function Progress({ order }: { order: Order }) {
   return <section className="trade-card"><h2>确认进度</h2><ol className="order-progress"><li><strong>申请已提交</strong><p>{time(order.created_at)} · 虚拟资金已预留</p></li><li><strong>{order.confirmed_nav ? '正式净值已取得' : order.status === 'cancelled' ? '已停止等待净值' : '等待对应正式净值'}</strong><p>计价日 {order.trade_date}{order.confirmed_nav ? ` · 净值 ${Number(order.confirmed_nav).toFixed(4)}` : ' · 不使用盘中估值'}</p></li><li><strong>{order.status === 'confirmed' ? '持仓份额已确认' : order.status === 'cancelled' ? '预留资金已退回' : '确认持仓份额'}</strong><p>{order.completed_at ? time(order.completed_at) : `预计 ${order.confirmation_date} 起，净值缺失则顺延`}</p></li></ol></section>
 }
-function CancelDialog({ order, busy, onClose, onConfirm }: { order: Order; busy: boolean; onClose: () => void; onConfirm: () => void }) {
+export function CancelDialog({ description, busy, onClose, onConfirm }: { description: string; busy: boolean; onClose: () => void; onConfirm: () => void }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => { ref.current?.showModal(); return () => ref.current?.close() }, [])
-  return <dialog className="cancel-dialog" ref={ref} onCancel={e => { e.preventDefault(); if (!busy) onClose() }} aria-labelledby="cancel-heading"><h2 id="cancel-heading">撤销这笔模拟申请？</h2><p>撤销后，{money(order.amount)} 元预留资金将退回可用余额，不收取申购费。</p><button autoFocus className="primary" disabled={busy} onClick={onClose}>继续等待确认</button><button className="secondary" disabled={busy} onClick={onConfirm}>{busy ? '正在撤销…' : '确认撤销申请'}</button></dialog>
+  return <dialog className="cancel-dialog" ref={ref} onCancel={e => { e.preventDefault(); if (!busy) onClose() }} aria-labelledby="cancel-heading"><h2 id="cancel-heading">撤销这笔模拟申请？</h2><p>{description}</p><button autoFocus className="primary" disabled={busy} onClick={onClose}>继续等待确认</button><button className="secondary" disabled={busy} onClick={onConfirm}>{busy ? '正在撤销…' : '确认撤销申请'}</button></dialog>
 }
 export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { id: string; pendingPage: boolean }) {
   const [order, setOrder] = useState<Order | null>(null)
@@ -144,7 +145,7 @@ export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { i
       {pendingPage && account && <section className="trade-card"><Row label="当前可用余额">{money(account.available_cash)} 元</Row><Row label="账户买入在途"><span className="trade-blue">{money(account.reserved_cash)} 元</span></Row></section>}
       {order.status === 'pending' && <><p className="trade-muted">{order.wait_reason}</p><button className="secondary" disabled={busy} onClick={() => void action('refresh')}>{busy ? '正在检查…' : '检查确认结果'}</button></>}
       {pendingPage ? <><a className="primary" href="#holdings">查看我的持仓</a><a className="secondary" href={`#order/${id}`}>查看交易详情 ›</a></> : <><RuleNote rule={order.rule} />{order.can_cancel && <><p className="trade-muted">撤销后，预留的虚拟资金退回可用余额。</p><button className="secondary" disabled={busy} onClick={() => setCancelOpen(true)}>撤销模拟申请</button></>}<p className="trade-muted">{order.can_cancel ? '可撤单' : '撤单已关闭'} · 截止 {time(order.cancel_until)}（北京时间）</p><a className="secondary" href="#holdings">查看我的持仓</a></>}
-      {cancelOpen && <CancelDialog order={order} busy={busy} onClose={() => setCancelOpen(false)} onConfirm={() => void action('cancel')} />}
+      {cancelOpen && <CancelDialog description={`撤销后，${money(order.amount)} 元预留资金将退回可用余额，不收取申购费。`} busy={busy} onClose={() => setCancelOpen(false)} onConfirm={() => void action('cancel')} />}
     </>}
   </main>
 }
@@ -153,6 +154,7 @@ export function TradingOverview({ holdings, user, onUnauthorized }: Props & { ho
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [orders, setOrders] = useState<Orders | null>(null)
   const [status, setStatus] = useState('all')
+  const [kind, setKind] = useState('all')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -160,15 +162,16 @@ export function TradingOverview({ holdings, user, onUnauthorized }: Props & { ho
   useEffect(() => {
     const controller = new AbortController()
     setLoading(true); setError('')
-    const request = holdings ? api<Portfolio>('/holdings', undefined, controller.signal).then(v => { if (!controller.signal.aborted) setPortfolio(v) }) : api<Orders>(`/orders?status=${status}&page=${page}`, undefined, controller.signal).then(v => { if (!controller.signal.aborted) setOrders(v) })
+    const request = holdings ? api<Portfolio>('/holdings', undefined, controller.signal).then(v => { if (!controller.signal.aborted) setPortfolio(v) }) : api<Orders>(`/orders?status=${status}&kind=${kind}&page=${page}`, undefined, controller.signal).then(v => { if (!controller.signal.aborted) setOrders(v) })
     request.catch(reason => { if (controller.signal.aborted) return; if (reason instanceof ApiError && reason.status === 401) onUnauthorized('登录已过期，请重新登录。'); else setError((reason as Error).message) }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
     return () => controller.abort()
-  }, [holdings, user.id, status, page, retry])
+  }, [holdings, user.id, status, kind, page, retry])
   return <main className="market-shell trade-page"><Heading title={holdings ? '我的持仓' : '交易记录'}>{holdings ? '看清现金、在途与已确认份额' : '每一次模拟操作，都有迹可循'}</Heading>
-    {!holdings && <div className="category-tabs" aria-label="订单状态">{[['all', '全部'], ['pending', '待确认'], ['confirmed', '已确认'], ['cancelled', '已撤销']].map(([v, text]) => <button key={v} aria-pressed={status === v} onClick={() => { setStatus(v); setPage(1) }}>{text}</button>)}</div>}
-    {loading ? <p role="status">正在加载…</p> : error ? <div className="error" role="alert">{error}<button onClick={() => setRetry(v => v + 1)}>重新加载</button></div> : holdings && portfolio ? <><section className="order-summary"><p>模拟总资产（元）</p><b>{money(portfolio.total_assets)}</b><Row label="可用余额">{money(portfolio.available_cash)}</Row><Row label="买入在途">{money(portfolio.reserved_cash)}</Row><Row label="持仓市值">{money(portfolio.market_value)}</Row></section><p className="trade-muted">{portfolio.valuation_note}</p>
-      {Number(portfolio.reserved_cash) > 0 && <a className="secondary" href="#orders">查看待确认申请 ›</a>}
-      {portfolio.items.length === 0 ? <section className="market-empty"><h2>暂无已确认持仓</h2><p>买入在途尚未计入持仓，确认后显示实际份额。</p><a href="#discover">去发现基金 ›</a></section> : portfolio.items.map(item => <section className="trade-card" key={item.fund_code}><a href={`#fund/${item.fund_code}`}><h2>{item.fund_name} ›</h2></a><p className="trade-muted">{item.fund_code} · 净值日期 {item.nav_date}</p><Row label="持仓市值">{money(item.market_value)} 元</Row><Row label="持仓份额">{money(item.shares)} 份</Row><Row label="买入成本（含申购费）">{money(item.cost)} 元</Row><details className="trade-rules"><summary>查看确认批次</summary>{item.lots.map(lot => <a key={lot.order_id} href={`#order/${lot.order_id}`}>{lot.confirmation_date} · {money(lot.shares)} 份 ›</a>)}</details></section>)}<button className="secondary" onClick={() => setRetry(v => v + 1)}>刷新持仓</button></> : orders && <><div className="order-list">{orders.items.length ? orders.items.map(order => <a className="trade-card order-link" key={order.id} href={`#order/${order.id}`}><span className="trade-blue">{statusName[order.status]}</span><h2>{order.fund_name}</h2><Row label={time(order.created_at)}>{money(order.amount)} 元 ›</Row></a>) : <section className="market-empty"><h2>暂无相关交易</h2><p>模拟买入后，在这里查看进度与记录。</p><a href="#discover">去发现基金 ›</a></section>}</div><div className="pagination"><button disabled={page <= 1} onClick={() => setPage(v => v - 1)}>上一页</button><span>第 {page} 页 · 共 {orders.total} 笔</span><button disabled={page * 20 >= orders.total} onClick={() => setPage(v => v + 1)}>下一页</button></div></>}
+    {!holdings && <div className="category-tabs" aria-label="订单状态">{[['all', '全部'], ['pending', '待确认'], ['confirmed', '已确认'], ['paid', '已到账'], ['cancelled', '已撤销']].map(([v, text]) => <button key={v} aria-pressed={status === v} onClick={() => { setStatus(v); setPage(1) }}>{text}</button>)}</div>}
+    {!holdings && <label className="trade-filter">交易类型 <select value={kind} onChange={e => { setKind(e.target.value); setPage(1) }}><option value="all">全部</option><option value="buy">买入</option><option value="sell">卖出</option></select></label>}
+    {loading ? <p role="status">正在加载…</p> : error ? <div className="error" role="alert">{error}<button onClick={() => setRetry(v => v + 1)}>重新加载</button></div> : holdings && portfolio ? <><section className="order-summary"><p>模拟总资产（元）</p><b>{money(portfolio.total_assets)}</b><Row label="可用余额">{money(portfolio.available_cash)}</Row><Row label="买入在途">{money(portfolio.reserved_cash)}</Row><Row label="赎回在途">{money(portfolio.redemption_cash)}</Row><Row label="持仓市值">{money(portfolio.market_value)}</Row><Row label="累计净值收益（含费用）">{money(portfolio.total_profit)}</Row><Row label="已实现净值收益">{money(portfolio.realized_profit)}</Row></section><p className="trade-muted">{portfolio.valuation_note}</p>
+      {(Number(portfolio.reserved_cash) > 0 || Number(portfolio.redemption_cash) > 0) && <a className="secondary" href="#orders">查看待处理申请 ›</a>}
+      {portfolio.items.length === 0 ? <section className="market-empty"><h2>暂无已确认持仓</h2><p>买入在途尚未计入持仓，确认后显示实际份额。</p><a href="#discover">去发现基金 ›</a></section> : portfolio.items.map(item => <section className="trade-card" key={item.fund_code}><a href={`#fund/${item.fund_code}`}><h2>{item.fund_name} ›</h2></a><p className="trade-muted">{item.fund_code} · 净值日期 {item.nav_date}</p><Row label="持仓市值">{money(item.market_value)} 元</Row><Row label="持仓份额">{money(item.shares)} 份</Row><Row label="冻结份额">{money(item.frozen_shares)} 份</Row><Row label="本次计价日可赎回">{money(item.available_shares)} 份</Row><Row label="剩余成本（含申购费）">{money(item.cost)} 元</Row><Row label="持仓净值收益">{money(item.holding_profit)} 元</Row><div className="position-actions"><a href={`#buy/${item.fund_code}`}>追加买入</a><a href={`#sell/${item.fund_code}`}>卖出份额</a></div>{item.sell_disabled_reason && <p className="trade-muted">{item.sell_disabled_reason}</p>}<details className="trade-rules"><summary>查看确认批次</summary>{item.lots.map(lot => <a key={lot.order_id} href={`#order/${lot.order_id}`}>{lot.confirmation_date} · {money(lot.shares)} 份 ›</a>)}</details></section>)}<button className="secondary" onClick={() => setRetry(v => v + 1)}>刷新持仓</button></> : orders && <><div className="order-list">{orders.items.length ? orders.items.map(order => <a className="trade-card order-link" key={order.id} href={`#${order.kind === 'sell' ? 'sell-order' : 'order'}/${order.id}`}><span className="trade-blue">{order.kind === 'sell' ? sellStatusName[order.status] : statusName[order.status]}</span><h2>{order.fund_name}</h2><Row label={time(order.created_at)}>{order.kind === 'sell' ? `${money(order.shares)} 份` : `${money(order.amount)} 元`} ›</Row></a>) : <section className="market-empty"><h2>暂无相关交易</h2><p>模拟买入后，在这里查看进度与记录。</p><a href="#discover">去发现基金 ›</a></section>}</div><div className="pagination"><button disabled={page <= 1} onClick={() => setPage(v => v - 1)}>上一页</button><span>第 {page} 页 · 共 {orders.total} 笔</span><button disabled={page * 20 >= orders.total} onClick={() => setPage(v => v + 1)}>下一页</button></div></>}
     <MarketNavigation active={holdings ? 'holdings' : 'orders'} user={user} />
   </main>
 }

@@ -122,7 +122,8 @@ def detail(code: str, db: DB, request: Request):
                          'note': '基金公司公开标准费率，仅供了解；非支付宝渠道优惠费率。起购限制、规则生效日、确认与到账日历仍待核验。'})
     if not disabled_reason(fund):
         result['rules'].update(status='simulation_verified', minimum_purchase='1.00 元',
-                               confirmation='T+1 起，等待正式净值', note=rule_snapshot()['scope'])
+                               confirmation='T+1 起，等待正式净值',
+                               arrival='赎回 T+7 到账（本模拟方案约定）', note=rule_snapshot()['scope'])
         result['simulation_rule'] = rule_snapshot()
     return result
 

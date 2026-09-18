@@ -24,11 +24,13 @@ class User(Base):
 class SimulationAccount(Base):
     __tablename__ = 'simulation_accounts'
     __table_args__ = (CheckConstraint('available_cash >= 0', name='nonnegative_cash'),
-                      CheckConstraint('reserved_cash >= 0', name='nonnegative_reserved'))
+                      CheckConstraint('reserved_cash >= 0', name='nonnegative_reserved'),
+                      CheckConstraint('redemption_cash >= 0', name='nonnegative_redemption'))
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(ForeignKey('users.id'), unique=True)
     available_cash: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     reserved_cash: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    redemption_cash: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -74,7 +76,7 @@ class AuthSession(Base):
 
 class CashLedger(Base):
     __tablename__ = 'cash_ledger'
-    __table_args__ = (CheckConstraint('amount > 0', name='positive_amount'),)
+    __table_args__ = (CheckConstraint('amount >= 0', name='nonnegative_amount'),)
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
     event_key: Mapped[str] = mapped_column(String(100), unique=True)
@@ -84,6 +86,8 @@ class CashLedger(Base):
     available_delta: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     reserved_delta: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     reserved_after: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    redemption_delta: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
+    redemption_after: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -139,11 +143,59 @@ class BuyOrder(Base):
 
 class PositionLot(Base):
     __tablename__ = 'position_lots'
-    __table_args__ = (CheckConstraint('shares > 0 AND cost > 0', name='positive_position'),)
+    __table_args__ = (CheckConstraint('shares > 0 AND cost > 0', name='positive_position'),
+                      CheckConstraint('remaining_shares >= 0 AND remaining_shares <= shares AND frozen_shares >= 0 AND frozen_shares <= remaining_shares', name='valid_remaining_shares'),
+                      CheckConstraint('remaining_cost >= 0 AND remaining_cost <= cost AND (remaining_shares > 0 OR remaining_cost = 0)', name='valid_remaining_cost'))
     id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
     account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
     order_id: Mapped[UUID] = mapped_column(ForeignKey('buy_orders.id'), unique=True)
     fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'))
     shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
     cost: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    remaining_shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    remaining_cost: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    frozen_shares: Mapped[Decimal] = mapped_column(Numeric(20, 2), server_default='0')
     confirmation_date: Mapped[date] = mapped_column()
+
+
+class SellOrder(Base):
+    __tablename__ = 'sell_orders'
+    __table_args__ = (UniqueConstraint('account_id', 'request_key'),
+        CheckConstraint("status IN ('pending', 'confirmed', 'paid', 'cancelled')", name='valid_status'),
+        CheckConstraint('shares > 0', name='positive_shares'),
+        CheckConstraint("(status IN ('confirmed', 'paid') AND confirmed_nav IS NOT NULL AND confirmed_nav > 0 AND gross_amount IS NOT NULL AND fee IS NOT NULL AND net_amount IS NOT NULL AND gross_amount >= 0 AND fee >= 0 AND net_amount >= 0 AND gross_amount = fee + net_amount AND confirmed_at IS NOT NULL) OR (status IN ('pending', 'cancelled') AND confirmed_nav IS NULL AND gross_amount IS NULL AND fee IS NULL AND net_amount IS NULL AND confirmed_at IS NULL)", name='valid_confirmation'),
+        CheckConstraint("(status = 'paid' AND paid_at IS NOT NULL) OR (status != 'paid' AND paid_at IS NULL)", name='valid_payment'))
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
+    fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'))
+    request_key: Mapped[UUID] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), index=True, default='pending')
+    shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    trade_date: Mapped[date] = mapped_column()
+    confirmation_date: Mapped[date] = mapped_column()
+    arrival_date: Mapped[date] = mapped_column()
+    cancel_until: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    rule_snapshot: Mapped[dict] = mapped_column(JSON)
+    quote_snapshot: Mapped[dict] = mapped_column(JSON)
+    confirmed_nav: Mapped[Decimal | None] = mapped_column(Numeric(20, 8))
+    gross_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    fee: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    net_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SellAllocation(Base):
+    __tablename__ = 'sell_allocations'
+    __table_args__ = (CheckConstraint('shares > 0 AND holding_days >= 0 AND fee_rate >= 0', name='valid_allocation'),)
+    order_id: Mapped[UUID] = mapped_column(ForeignKey('sell_orders.id'), primary_key=True)
+    lot_id: Mapped[UUID] = mapped_column(ForeignKey('position_lots.id'), primary_key=True)
+    shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    holding_days: Mapped[int] = mapped_column(Integer)
+    fee_rate: Mapped[Decimal] = mapped_column(Numeric(10, 6))
+    cost: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    gross_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    fee: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+    net_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))

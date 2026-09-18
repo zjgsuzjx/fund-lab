@@ -86,3 +86,34 @@ def disabled_reason(fund, now=None):
 
 def rule_snapshot():
     return deepcopy(RULE)
+
+
+SELL_RULE = {
+    'version': '000147-redemption-sim-v1', 'fund_code': '000147',
+    'name': '公开标准赎回费率模拟方案', 'minimum': '0.01',
+    'simulation_from': '2026-09-17', 'simulation_through': '2026-12-31',
+    'rounding': 'ROUND_HALF_UP', 'allocation': 'FIFO', 'arrival_days': 7,
+    'fee_tiers': [{'below_days': 7, 'rate': '0.015'}, {'below_days': 30, 'rate': '0.0075'},
+                  {'below_days': 365, 'rate': '0.001'}, {'below_days': 730, 'rate': '0.0005'},
+                  {'below_days': None, 'rate': '0'}],
+    'sources': [{'url': PROSPECTUS, 'pages': '3–4、26–32', 'published_on': '2026-01-31'},
+                {'url': CALENDAR_SOURCE, 'published_on': '2025-12-22'}],
+    'scope': '0.01 份起赎，按先确认先赎回分配批次，持有天数从买入确认日算至赎回确认日（不含）。'
+             '本练习室约定 15:00 截止、截止前可撤单；T+1 起按正式 T 日净值确认，T+7 到账。'
+             'T+n 为交易日，持有天数为自然日。招募说明书规定通常 T+7 内支付，'
+             '此处 T+7 是模拟约定，不代表支付宝实际到账时间。未处理的分红/拆分事件会暂停赎回。',
+}
+
+
+def redemption_rate(days, rule=SELL_RULE):
+    if days < 0:
+        raise HTTPException(409, '持仓确认日期异常，请核验。')
+    return Decimal(next(t['rate'] for t in rule['fee_tiers'] if t['below_days'] is None or days < t['below_days']))
+
+
+def redemption_schedule(now):
+    trade, confirmation, cutoff = schedule(now)
+    arrival = trade
+    for _ in range(SELL_RULE['arrival_days']):
+        arrival = next_trading_day(arrival)
+    return trade, confirmation, cutoff, arrival

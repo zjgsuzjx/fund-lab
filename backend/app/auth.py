@@ -14,6 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .db import get_session
+from .trade_rules import utcnow
 from .throttle import throttle
 from .models import AuthSession, CashLedger, SimulationAccount, User
 
@@ -156,11 +157,11 @@ def owned_account(db: Session, user: User):
 
 
 @router.get('/account')
-def account(user: CurrentUser, db: DB):
+def account(user: CurrentUser, db: DB, now: Annotated[datetime, Depends(utcnow)]):
     row = owned_account(db, user)
     from .trades import lock_account, portfolio
     row = lock_account(db, row.id)
-    return {'id': str(row.id), 'created_at': row.created_at, **portfolio(db, row)}
+    return {'id': str(row.id), 'created_at': row.created_at, **portfolio(db, row, now)}
 
 
 @router.get('/account/ledger')
@@ -169,7 +170,8 @@ def ledger(user: CurrentUser, db: DB):
     entries = db.scalars(select(CashLedger).where(CashLedger.account_id == row.id).order_by(CashLedger.created_at, CashLedger.id)).all()
     return {'items': [{'id': str(e.id), 'kind': e.kind, 'amount': str(e.amount),
                        'balance_after': str(e.balance_after), 'available_delta': str(e.available_delta),
-                       'reserved_delta': str(e.reserved_delta), 'reserved_after': str(e.reserved_after), 'created_at': e.created_at} for e in entries]}
+                       'reserved_delta': str(e.reserved_delta), 'reserved_after': str(e.reserved_after),
+                       'redemption_delta': str(e.redemption_delta), 'redemption_after': str(e.redemption_after), 'created_at': e.created_at} for e in entries]}
 
 
 class PasswordChange(BaseModel):

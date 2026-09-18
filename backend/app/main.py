@@ -18,6 +18,7 @@ from .db import get_engine, get_session
 from .models import Fund
 from .funds import router as funds_router
 from .trades import router as trades_router
+from .redemptions import router as redemptions_router
 from .settle_orders import settle_pending
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -45,7 +46,7 @@ async def lifespan(app: FastAPI):
         get_engine().dispose()
 
 
-app = FastAPI(title='Fund Lab API', version='0.4.0', lifespan=lifespan)
+app = FastAPI(title='Fund Lab API', version='0.5.0', lifespan=lifespan)
 
 
 @app.exception_handler(SQLAlchemyError)
@@ -74,6 +75,7 @@ def ready(session: Annotated[Session, Depends(get_session)]):
 app.include_router(auth_router)
 app.include_router(funds_router)
 app.include_router(trades_router)
+app.include_router(redemptions_router)
 
 
 @app.middleware('http')

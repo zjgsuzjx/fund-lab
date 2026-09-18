@@ -3,12 +3,13 @@ import { api, ApiError, type User, type Account, type Ledger } from './api'
 import Discover from './Discover'
 import FundDetails from './FundDetails'
 import './market.css'
+import { SellPage, SellOrderPage } from './SellTrading'
 import { BuyPage, OrderPage, TradingOverview } from './Trading'
 
-type Page = 'login' | 'register' | 'account' | 'discover' | 'holdings' | 'orders' | `fund/${string}` | `buy/${string}` | `pending/${string}` | `order/${string}`
+type Page = 'login' | 'register' | 'account' | 'discover' | 'holdings' | 'orders' | `fund/${string}` | `buy/${string}` | `pending/${string}` | `order/${string}` | `sell/${string}` | `sell-order/${string}` | `sell-submitted/${string}`
 const route = (): Page => {
   const value = location.hash.slice(1).split('?')[0]
-  return ['login', 'register', 'account', 'discover', 'holdings', 'orders'].includes(value) || /^(fund|buy|pending|order)\/[^/]+$/.test(value) ? value as Page : 'discover'
+  return ['login', 'register', 'account', 'discover', 'holdings', 'orders'].includes(value) || /^(fund|buy|pending|order|sell|sell-order|sell-submitted)\/[^/]+$/.test(value) ? value as Page : 'discover'
 }
 const go = (page: Page) => { location.hash = page }
 const money = (value: string) => Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -50,7 +51,7 @@ export default function App() {
   }, [check])
   useEffect(() => {
     if (checking || checkError) return
-    if ((['account', 'holdings', 'orders'].includes(page) || /^(buy|pending|order)\//.test(page)) && !user) { setNotice('请先登录后查看账户。'); go('login') }
+    if ((['account', 'holdings', 'orders'].includes(page) || /^(buy|pending|order|sell|sell-order|sell-submitted)\//.test(page)) && !user) { setNotice('请先登录后查看账户。'); go('login') }
     if ((page === 'login' || page === 'register') && user) go('account')
   }, [page, user, checking, checkError])
   // Recheck when returning to a tab, so logout in another tab clears private data.
@@ -62,7 +63,7 @@ export default function App() {
   function signedOut(message: string) { authVersion.current++; setUser(null); setNotice(message); setPage('login'); go('login') }
   return <>
     {['login', 'register'].includes(page) && <nav className="app-nav" aria-label="主导航"><a href="#discover">基金练习室</a><div><a href="#discover">发现</a><a href={user ? '#account' : '#login'}>{user ? '我的账户' : '登录 / 注册'}</a></div></nav>}
-    {checking ? <main className="account-shell"><p role="status">正在恢复登录状态…</p></main> : checkError ? <main className="account-shell"><p className="error" role="alert">{checkError}</p><button className="primary" onClick={() => void check()}>重新连接</button></main> : page === 'discover' ? <Discover key={user?.id ?? 'guest'} user={user} onUnauthorized={signedOut} /> : page.startsWith('fund/') ? <FundDetails key={`${user?.id ?? 'guest'}:${page}`} code={page.slice(5)} user={user} onUnauthorized={signedOut} /> : page.startsWith('buy/') && user ? <BuyPage key={`${user.id}:${page}`} code={page.slice(4)} user={user} onUnauthorized={signedOut} /> : /^(pending|order)\//.test(page) && user ? <OrderPage key={`${user.id}:${page}`} id={page.split('/')[1]} pendingPage={page.startsWith('pending/')} user={user} onUnauthorized={signedOut} /> : ['holdings', 'orders'].includes(page) && user ? <TradingOverview key={`${user.id}:${page}`} holdings={page === 'holdings'} user={user} onUnauthorized={signedOut} /> : page === 'account' && user ? <AccountPage user={user} signedOut={signedOut} /> : <AuthForm key={page} register={page === 'register'} notice={notice} onSuccess={value => { authVersion.current++; setUser(value); setNotice(''); setPage('discover'); go('discover') }} />}
+    {checking ? <main className="account-shell"><p role="status">正在恢复登录状态…</p></main> : checkError ? <main className="account-shell"><p className="error" role="alert">{checkError}</p><button className="primary" onClick={() => void check()}>重新连接</button></main> : page === 'discover' ? <Discover key={user?.id ?? 'guest'} user={user} onUnauthorized={signedOut} /> : page.startsWith('fund/') ? <FundDetails key={`${user?.id ?? 'guest'}:${page}`} code={page.slice(5)} user={user} onUnauthorized={signedOut} /> : page.startsWith('sell/') && user ? <SellPage key={`${user.id}:${page}`} code={page.slice(5)} user={user} onUnauthorized={signedOut} /> : /^(sell-order|sell-submitted)\//.test(page) && user ? <SellOrderPage key={`${user.id}:${page}`} id={page.split('/')[1]} submitted={page.startsWith('sell-submitted/')} user={user} onUnauthorized={signedOut} /> : page.startsWith('buy/') && user ? <BuyPage key={`${user.id}:${page}`} code={page.slice(4)} user={user} onUnauthorized={signedOut} /> : /^(pending|order)\//.test(page) && user ? <OrderPage key={`${user.id}:${page}`} id={page.split('/')[1]} pendingPage={page.startsWith('pending/')} user={user} onUnauthorized={signedOut} /> : ['holdings', 'orders'].includes(page) && user ? <TradingOverview key={`${user.id}:${page}`} holdings={page === 'holdings'} user={user} onUnauthorized={signedOut} /> : page === 'account' && user ? <AccountPage user={user} signedOut={signedOut} /> : <AuthForm key={page} register={page === 'register'} notice={notice} onSuccess={value => { authVersion.current++; setUser(value); setNotice(''); setPage('discover'); go('discover') }} />}
   </>
 }
 
@@ -152,7 +153,7 @@ function AccountPage({ user, signedOut }: { user: User; signedOut: (message: str
     {error && <div className="error" role="alert">{error}<button onClick={() => setRefresh(value => value + 1)} disabled={busy}>重新加载</button></div>}
     <h2 className="account-heading">账户与数据</h2><section className="settings-card"><button onClick={() => setChanging(!changing)} aria-expanded={changing}>修改密码<span>›</span></button><div>导出交易记录<span>暂未开放</span></div><div>备份练习数据<span>暂未开放</span></div><details><summary>数据保存位置<span>本机 ›</span></summary><p>数据保存在运行后端服务的本机 PostgreSQL 数据库中，清理浏览器不会删除账户数据。</p></details></section>
     {changing && <form onSubmit={changePassword} className="account-form"><fieldset disabled={busy}><Password label="当前密码" name="current_password" autoComplete="current-password" /><Password label="新密码" name="new_password" /><Password label="确认新密码" name="confirm" /><button className="primary">{busy ? '正在提交…' : '修改密码并重新登录'}</button></fieldset></form>}
-    <h2 className="account-heading">资金流水</h2><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>在途变动 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section>
+    <h2 className="account-heading">资金流水</h2><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途', sell_confirmed: '卖出确认转入赎回在途', sell_paid: '赎回资金到账' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>买入在途 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small><small>赎回在途 {Number(entry.redemption_delta) > 0 ? '+' : ''}{money(entry.redemption_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section>
     <aside className="soft-card"><strong>换电脑前，先备份</strong><p>本地账户不自动同步到其他设备。<br />清理数据前请保留一份数据库备份。</p></aside><Instructions />
     <button className="secondary" disabled={busy} onClick={() => void logout()}>{busy ? '正在处理…' : '退出登录'}</button>
     <nav className="bottom-nav" aria-label="账户导航"><a href="#discover">发现</a><a href="#holdings">持仓</a><a href="#orders">交易</a><a href="#account" aria-current="page">我的</a></nav>

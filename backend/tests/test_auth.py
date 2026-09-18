@@ -16,13 +16,6 @@ from test_api import db
 
 from app.throttle import _buckets
 
-@pytest.fixture(autouse=True)
-def reset_throttle():
-    _buckets.clear()
-    yield
-    _buckets.clear()
-
-
 HEADERS = {'X-Fund-Lab': '1'}
 
 
