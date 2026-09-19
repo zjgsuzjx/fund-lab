@@ -199,3 +199,48 @@ class SellAllocation(Base):
     gross_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
     fee: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
     net_amount: Mapped[Decimal | None] = mapped_column(Numeric(20, 2))
+
+
+class DividendEvent(Base):
+    __tablename__ = 'dividend_events'
+    __table_args__ = (UniqueConstraint('fund_code', 'record_date'),
+        CheckConstraint('cash_per_share > 0', name='positive_distribution'),
+        CheckConstraint('pay_date >= record_date AND (ex_date IS NULL OR (ex_date >= record_date AND pay_date >= ex_date))', name='valid_dates'),
+        CheckConstraint("status IN ('observed', 'verified', 'conflict')", name='valid_status'))
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'), index=True)
+    record_date: Mapped[date] = mapped_column()
+    ex_date: Mapped[date | None] = mapped_column()
+    pay_date: Mapped[date] = mapped_column()
+    cash_per_share: Mapped[Decimal] = mapped_column(Numeric(20, 8))
+    status: Mapped[str] = mapped_column(String(20), default='observed')
+    source_url: Mapped[str] = mapped_column(String(1000))
+    evidence: Mapped[dict] = mapped_column(JSON)
+    conflicts: Mapped[list] = mapped_column(JSON, default=list)
+    observed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DividendPayment(Base):
+    __tablename__ = 'dividend_payments'
+    __table_args__ = (UniqueConstraint('account_id', 'event_id'),
+        CheckConstraint('shares >= 0 AND amount >= 0', name='nonnegative_entitlement'),
+        CheckConstraint("(status = 'pending' AND paid_at IS NULL) OR (status = 'paid' AND paid_at IS NOT NULL)", name='valid_payment'))
+    id: Mapped[UUID] = mapped_column(primary_key=True, default=uuid4)
+    account_id: Mapped[UUID] = mapped_column(ForeignKey('simulation_accounts.id'), index=True)
+    event_id: Mapped[UUID] = mapped_column(ForeignKey('dividend_events.id'))
+    shares: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    amount: Mapped[Decimal] = mapped_column(Numeric(20, 2))
+    status: Mapped[str] = mapped_column(String(20), default='pending')
+    snapshot: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DataUpdateJob(Base):
+    __tablename__ = 'data_update_jobs'
+    fund_code: Mapped[str] = mapped_column(ForeignKey('funds.code'), primary_key=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default='queued')
+    message: Mapped[str] = mapped_column(String(500), default='等待更新。')

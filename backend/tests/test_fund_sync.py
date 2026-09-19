@@ -128,3 +128,33 @@ def test_concurrent_sync_lock_skips_second_worker():
         finally:
             first.rollback()
             second.rollback()
+
+
+def test_sync_does_not_erase_known_dividend_annotation(clean_fund):
+    db = clean_fund
+    synchronize(db, '000147', transport_factory=FakeTransport)
+    nav = db.get(FundNav, ('000147', date(2024, 6, 28)))
+    nav.dividend_note = '每份派现金0.1元'
+    db.commit()
+    result = synchronize(db, '000147', transport_factory=FakeTransport)
+    assert result['status'] == 'conflict'
+    assert nav.dividend_note == '每份派现金0.1元'
+
+
+def test_official_dividend_candidates_are_idempotent_and_conflicts_persist(clean_fund):
+    from app.dividends import observe_events
+    from app.models import DividendEvent
+    db = clean_fund
+    fund = db.get(Fund, '000147')
+    now = datetime.now(timezone.utc)
+    data = {'dividend_rows': [['2024-06-28', '2024-06-20', '0.1', '2024-07-01']]}
+    for _ in range(2):
+        observe_events(db, fund, data, now, fund.source_url)
+    event = db.scalar(select(DividendEvent).where(DividendEvent.fund_code == '000147', DividendEvent.record_date == date(2024, 6, 28)))
+    assert event.status == 'observed' and event.ex_date is None
+    data['dividend_rows'][0][2] = '0.2'
+    observe_events(db, fund, data, now, fund.source_url)
+    assert event.status == 'conflict' and event.cash_per_share == Decimal('.1')
+    data['dividend_rows'][0][2] = '0.1'
+    observe_events(db, fund, data, now, fund.source_url)
+    assert event.status == 'conflict'

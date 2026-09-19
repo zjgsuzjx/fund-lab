@@ -108,6 +108,7 @@ def fetch_bundle(code, transport, *, latest_cached=None, full=False):
 
 
 def apply_bundle(db, fund, bundle):
+    from .dividends import observe_events
     rows = bundle['rows']
     existing = {n.nav_date: n for n in db.scalars(select(FundNav).where(FundNav.fund_code == fund.code))}
     conflicts = []
@@ -122,6 +123,9 @@ def apply_bundle(db, fund, bundle):
         if old and (old.unit_nav != unit or old.cumulative_nav != cumulative):
             conflicts.append({'date': row['date'], 'old_unit_nav': str(old.unit_nav), 'new_unit_nav': str(unit),
                               'old_cumulative_nav': str(old.cumulative_nav), 'new_cumulative_nav': str(cumulative)})
+        if old and old.dividend_note and old.dividend_note != row.get('dividend_note'):
+            conflicts.append({'date': row['date'], 'old_dividend_note': old.dividend_note,
+                              'new_dividend_note': row.get('dividend_note')})
     if conflicts:
         raise RevisionConflict(conflicts)
     inserted, unchanged = 0, 0
@@ -137,7 +141,8 @@ def apply_bundle(db, fund, bundle):
                            dividend_note=row.get('dividend_note')))
             inserted += 1
     evidence = db.get(FundRuleEvidence, fund.code)
-    if evidence and evidence.subscription_fees != bundle['official']['subscription_fees']:
+    if evidence and (evidence.subscription_fees != bundle['official']['subscription_fees'] or
+                     evidence.redemption_fees != bundle['official']['redemption_fees']):
         fund.trade_enabled = False
     if not evidence:
         evidence = FundRuleEvidence(fund_code=fund.code)
@@ -152,6 +157,7 @@ def apply_bundle(db, fund, bundle):
     fund.source_url, fund.source_observed_at = bundle['source_url'], bundle['observed_at']
     fund.last_sync_at, fund.is_sample = bundle['observed_at'], False
     fund.history_complete = fund.history_complete or bundle['history_complete']
+    observe_events(db, fund, bundle['official'], bundle['observed_at'], bundle['source_url'])
     db.flush()
     return inserted, unchanged
 

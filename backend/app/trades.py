@@ -168,6 +168,7 @@ def serialize_order(db, order, now):
 
 def portfolio(db, account, now=None):
     from .redemptions import lots_event, sale_context
+    from .dividends import dividend_totals
     now = now or utcnow()
     lots = db.scalars(select(PositionLot).where(PositionLot.account_id == account.id, PositionLot.remaining_shares > 0)).all()
     grouped = {}
@@ -180,7 +181,8 @@ def portfolio(db, account, now=None):
                             'frozen_shares': str(lot.frozen_shares), 'cost': str(lot.remaining_cost),
                             'confirmation_date': lot.confirmation_date})
     items, total, remaining_cost = [], Decimal('0.00'), Decimal('0.00')
-    event_warning = lots_event(db, lots, now.astimezone(CN).date())
+    history_lots = db.scalars(select(PositionLot).where(PositionLot.account_id == account.id)).all()
+    event_warning = lots_event(db, history_lots, now.astimezone(CN).date())
     for code, row in grouped.items():
         nav = db.scalar(select(FundNav).where(FundNav.fund_code == code, FundNav.nav_date <= now.astimezone(CN).date())
                         .order_by(FundNav.nav_date.desc()).limit(1))
@@ -197,7 +199,8 @@ def portfolio(db, account, now=None):
                       'nav_date': nav.nav_date if nav else None, 'unit_nav': str(nav.unit_nav) if nav else None,
                       'lots': row['lots']})
     complete = all(i['market_value'] is not None for i in items)
-    assets = account.available_cash + account.reserved_cash + account.redemption_cash + total
+    dividend_cash, dividend_income = dividend_totals(db, account.id)
+    assets = account.available_cash + account.reserved_cash + account.redemption_cash + dividend_cash + total
     initial = db.scalar(select(func.coalesce(func.sum(CashLedger.amount), 0)).where(
         CashLedger.account_id == account.id, CashLedger.kind == 'initial_capital'))
     realized = db.scalar(select(func.coalesce(func.sum(SellAllocation.net_amount - SellAllocation.cost), 0))
@@ -208,8 +211,9 @@ def portfolio(db, account, now=None):
             'total_assets': str(assets) if complete else None,
             'total_profit': str(assets - initial) if complete and not event_warning else None,
             'holding_profit': str(total - remaining_cost) if complete and not event_warning else None,
-            'realized_profit': str(realized),
-            'valuation_note': event_warning or '市值按最新已保存正式净值估算；收益为净值口径，含交易费，不含未处理分红权益。'}
+            'dividend_cash': str(dividend_cash), 'dividend_income': str(dividend_income),
+            'realized_profit': str(realized + dividend_income) if not event_warning else None,
+            'valuation_note': event_warning or '市值按最新已保存正式净值估算；累计及已实现收益含交易费和已登记现金分红，持仓收益为剩余份额市值减剩余成本。'}
 
 
 @router.post('/trades/quote', dependencies=[Depends(write_guard)])

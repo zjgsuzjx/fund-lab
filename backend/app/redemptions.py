@@ -8,7 +8,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from .auth import DB, CurrentUser, owned_account, write_guard
 from .models import BuyOrder, CashLedger, Fund, FundNav, FundSyncRun, PositionLot, SellAllocation, SellOrder
@@ -43,10 +43,38 @@ def event_between(db, code, after, through):
 
 
 def lots_event(db, lots, through):
+    from .dividends import cash_note_matches, eligible_shares
+    from .models import DividendEvent, DividendPayment
     for lot in lots:
         buy = db.get(BuyOrder, lot.order_id)
-        if event := event_between(db, lot.fund_code, buy.trade_date, through):
-            return f'{event} 存在未处理分红或份额事件，需核验权益后再赎回。'
+        events = db.scalars(select(DividendEvent).where(DividendEvent.fund_code == lot.fund_code,
+            DividendEvent.record_date > buy.trade_date, DividendEvent.record_date <= through)).all()
+        handled_dates = set()
+        for event in events:
+            ownership = eligible_shares(db, lot.account_id, event)
+            if ownership is not None and ownership[0] == 0:
+                if event.ex_date:
+                    handled_dates.add(event.ex_date)
+                continue
+            payment = db.scalar(select(DividendPayment.id).where(DividendPayment.account_id == lot.account_id,
+                DividendPayment.event_id == event.id))
+            if event.status != 'verified' or not payment:
+                return f'{event.record_date} 分红权益等待核验或登记，相关收益及赎回暂缓。'
+            handled_dates.add(event.ex_date)
+        notes = db.scalars(select(FundNav).where(FundNav.fund_code == lot.fund_code,
+            FundNav.nav_date > buy.trade_date, FundNav.nav_date <= through,
+            FundNav.dividend_note.is_not(None), FundNav.dividend_note != '')).all()
+        for nav in notes:
+            if nav.nav_date in handled_dates:
+                # A reviewed cash event cannot suppress an unrelated split annotation.
+                matching = next((e for e in events if e.ex_date == nav.nav_date), None)
+                if matching and cash_note_matches(nav.dividend_note, matching.cash_per_share):
+                    continue
+            sold = db.scalar(select(func.coalesce(func.sum(SellAllocation.shares), 0)).join(SellOrder).where(
+                SellAllocation.lot_id == lot.id, SellOrder.status.in_(['confirmed', 'paid']),
+                SellOrder.trade_date < nav.nav_date))
+            if sold < lot.shares:
+                return f'{nav.nav_date} 存在未处理分红或份额事件，需核验权益后再赎回。'
     return ''
 
 

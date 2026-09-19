@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from .db import get_engine
 from .models import BuyOrder, SellOrder
+from .dividends import settle_dividends
 from .trades import settle_buy
 from .redemptions import settle_sell
 from .trade_rules import CN, utcnow
@@ -36,6 +37,17 @@ def settle_pending(*, account_id=None):
             errors += 1
             # No SQL parameters or credentials in scheduled-job logs.
             log.error('Settlement deferred for order %s', order_id)
+    with Session(get_engine()) as db:
+        accounts = db.scalars(select(BuyOrder.account_id).where(*buy_scope).distinct()).all()
+    dividends_paid = 0
+    for owner_id in accounts:
+        try:
+            with Session(get_engine()) as db:
+                dividends_paid += settle_dividends(db, owner_id, utcnow)
+                db.commit()
+        except Exception:
+            errors += 1
+            log.error('Dividend settlement deferred for account %s', owner_id)
     paid = 0
     for account_id, order_id in redemptions:
         try:
@@ -47,7 +59,7 @@ def settle_pending(*, account_id=None):
             errors += 1
             log.error('Redemption deferred for order %s', order_id)
     return {'checked': len(pending) + len(redemptions), 'confirmed_or_already_confirmed': confirmed,
-            'redemptions_paid': paid, 'errors': errors}
+            'redemptions_paid': paid, 'dividends_paid': dividends_paid, 'errors': errors}
 
 
 if __name__ == '__main__':

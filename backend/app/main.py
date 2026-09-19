@@ -20,6 +20,8 @@ from .funds import router as funds_router
 from .trades import router as trades_router
 from .redemptions import router as redemptions_router
 from .settle_orders import settle_pending
+from .dividends import router as dividends_router
+from .maintenance import router as maintenance_router, update_due
 
 BACKEND = Path(__file__).resolve().parents[1]
 
@@ -38,15 +40,27 @@ async def lifespan(app: FastAPI):
             except TimeoutError:
                 pass
     task = asyncio.create_task(worker())
+    async def updater():
+        while not stop.is_set():
+            try:
+                await asyncio.to_thread(update_due)
+            except Exception:
+                logging.getLogger(__name__).warning('Data update deferred; check database and migrations.')
+            try:
+                await asyncio.wait_for(stop.wait(), timeout=60)
+            except TimeoutError:
+                pass
+    update_task = asyncio.create_task(updater())
     try:
         yield
     finally:
         stop.set()
         await task
+        await update_task
         get_engine().dispose()
 
 
-app = FastAPI(title='Fund Lab API', version='0.5.0', lifespan=lifespan)
+app = FastAPI(title='Fund Lab API', version='0.6.0', lifespan=lifespan)
 
 
 @app.exception_handler(SQLAlchemyError)
@@ -76,6 +90,8 @@ app.include_router(auth_router)
 app.include_router(funds_router)
 app.include_router(trades_router)
 app.include_router(redemptions_router)
+app.include_router(dividends_router)
+app.include_router(maintenance_router)
 
 
 @app.middleware('http')

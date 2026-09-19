@@ -33,7 +33,7 @@ export type Orders = { items: (Order | SellOrder)[]; total: number; page: number
 export type Portfolio = { items: { fund_code: string; fund_name: string; shares: string; cost: string;
   frozen_shares: string; available_shares: string; sell_disabled_reason: string; holding_profit: string | null; market_value: string | null; nav_date: string | null; unit_nav: string | null;
   lots: { order_id: string; shares: string; frozen_shares: string; cost: string; confirmation_date: string }[] }[];
-  available_cash: string; reserved_cash: string; redemption_cash: string; total_profit: string | null; total_assets: string | null; market_value: string | null; holding_profit: string | null; realized_profit: string; valuation_note: string }
+  available_cash: string; reserved_cash: string; redemption_cash: string; total_profit: string | null; total_assets: string | null; market_value: string | null; holding_profit: string | null; realized_profit: string | null; dividend_cash: string; dividend_income: string; valuation_note: string }
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message) }
 }

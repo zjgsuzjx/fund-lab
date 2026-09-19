@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type Account, type FundPage, type SyncRuns, type User } from './api'
 import { MarketNavigation, formatMoney, formatDate, ChangeValue } from './MarketShared'
+import DataMaintenance from './DataMaintenance'
 
 type Filters = { q: string; category: string; sort: string; watchlist: boolean; page: number }
 function readFilters(): Filters {
@@ -89,7 +90,7 @@ export default function Discover({ user, onUnauthorized }: { user: User | null; 
   function search(event: FormEvent) { event.preventDefault(); updateFilters({ q: input.trim() }) }
   return <main className="market-shell discover-page">
     <div className="market-title"><h1>基金练习室</h1><a href={user ? '#account' : '#login'}>{user ? '账户' : '登录'} ›</a></div><p className="subtitle">用虚拟资金，练习每一个投资决定</p>
-    <section className="asset-card" aria-label="模拟资产"><span>模拟总资产（元）</span><strong className="asset-total">{account ? (account.total_assets === null ? '—' : formatMoney(account.total_assets)) : user ? '—' : '登录后查看'}</strong><div className="asset-columns"><div><span>买入在途</span><strong>{account ? formatMoney(account.reserved_cash) : '—'}</strong></div><div><span>可用余额</span><strong>{account ? formatMoney(account.available_cash) : '—'}</strong></div></div>{account && <small>总资产含现金、买入/赎回在途及净值估算持仓</small>}{accountError && <p role="alert">{accountError}<button onClick={() => setRefresh(value => value + 1)}>重试</button></p>}</section>
+    <section className="asset-card" aria-label="模拟资产"><span>模拟总资产（元）</span><strong className="asset-total">{account ? (account.total_assets === null ? '—' : formatMoney(account.total_assets)) : user ? '—' : '登录后查看'}</strong><div className="asset-columns"><div><span>买入在途</span><strong>{account ? formatMoney(account.reserved_cash) : '—'}</strong></div><div><span>可用余额</span><strong>{account ? formatMoney(account.available_cash) : '—'}</strong></div></div>{account && <small>总资产含现金、买入/赎回在途、待到账红利及持仓</small>}{accountError && <p role="alert">{accountError}<button onClick={() => setRefresh(value => value + 1)}>重试</button></p>}</section>
     <form className="market-search" onSubmit={search}><img src="/assets/search.svg" width="18" height="18" alt="" /><label className="sr-only" htmlFor="market-search">搜索基金名称或代码</label><input id="market-search" maxLength={100} value={input} onChange={event => setInput(event.target.value)} placeholder="搜索基金名称或代码" /><button type="submit">搜索</button></form>
     <div className="category-tabs" role="group" aria-label="基金分类">{[['all', '全部'], ['bond', '债券型'], ['index', '指数型'], ['mixed', '混合型']].map(([value, label]) => <button key={value} aria-pressed={filters.category === value} onClick={() => updateFilters({ category: value })}>{label}</button>)}</div>
     <div className="explore-heading"><h2>基金探索</h2><label className="sort-label"><span className="sr-only">基金排序</span><select aria-label="基金排序" value={filters.sort} onChange={event => updateFilters({ sort: event.target.value })}><option value="code">默认排序 · 代码</option><option value="name">基金名称</option><option value="change_desc">近一年净值涨幅 ↓</option><option value="change_asc">近一年净值涨幅 ↑</option><option value="nav_desc">单位净值 ↓</option></select></label></div>
@@ -104,8 +105,9 @@ export default function Discover({ user, onUnauthorized }: { user: User | null; 
       {data.total > 0 && <nav className="pagination" aria-label="分页"><button disabled={filters.page <= 1} onClick={() => updateFilters({ page: filters.page - 1 })}>上一页</button><span>第 {data.page} / {Math.max(1, Math.ceil(data.total / data.page_size))} 页</span><button disabled={filters.page * data.page_size >= data.total} onClick={() => updateFilters({ page: filters.page + 1 })}>下一页</button></nav>}
     </>}
     <p className="data-disclosure">公开基金数据，不代表支付宝在售清单。净值涨跌不含分红再投资；数据不足时显示“—”。</p>
+    <DataMaintenance user={user} onUpdated={() => setRefresh(value => value + 1)} />
     <aside className="soft-card"><strong>从理解交易规则开始</strong><p>净值、确认时间与费用，都会影响结果。<br />在基金详情中查看来源与费用说明。</p></aside>
-    <details className="sync-details" open={showRuns} onToggle={event => setShowRuns(event.currentTarget.open)}><summary>数据更新记录</summary><p>页面读取本机已保存的数据；“刷新数据”重新读取缓存。同步由本机维护命令执行。</p>{runsLoading && <p role="status">正在读取更新记录…</p>}{runsError && <p role="alert">{runsError}<button onClick={() => setRefresh(value => value + 1)}>重试</button></p>}{runs?.items.length === 0 && <p>暂无在线同步记录，当前使用历史验证样本。</p>}{runs?.items.map(run => <div className="sync-row" key={run.id}><strong>{run.fund_code} · {run.status === 'success' ? '已更新' : run.status === 'conflict' ? '发现修订' : '更新失败'}</strong><time>{formatDate(run.finished_at ?? run.started_at)}</time><p>{run.message} 新增 {run.inserted} 条，已有 {run.unchanged} 条。</p></div>)}</details>
+    <details className="sync-details" open={showRuns} onToggle={event => setShowRuns(event.currentTarget.open)}><summary>数据更新记录</summary><p>页面读取本机已保存的数据；“刷新数据”重新读取缓存。000147 支持在线更新和后台定期同步，其他基金由本机维护命令更新。</p>{runsLoading && <p role="status">正在读取更新记录…</p>}{runsError && <p role="alert">{runsError}<button onClick={() => setRefresh(value => value + 1)}>重试</button></p>}{runs?.items.length === 0 && <p>暂无在线同步记录，当前使用历史验证样本。</p>}{runs?.items.map(run => <div className="sync-row" key={run.id}><strong>{run.fund_code} · {run.status === 'success' ? '已更新' : run.status === 'conflict' ? '发现修订' : '更新失败'}</strong><time>{formatDate(run.finished_at ?? run.started_at)}</time><p>{run.message} 新增 {run.inserted} 条，已有 {run.unchanged} 条。</p></div>)}</details>
     <MarketNavigation active="discover" user={user} />
   </main>
 }
