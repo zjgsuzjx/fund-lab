@@ -167,6 +167,7 @@ def serialize_order(db, order, now):
 
 
 def portfolio(db, account, now=None):
+    from .earnings import earnings
     from .redemptions import lots_event, sale_context
     from .dividends import dividend_totals
     now = now or utcnow()
@@ -183,6 +184,7 @@ def portfolio(db, account, now=None):
     items, total, remaining_cost = [], Decimal('0.00'), Decimal('0.00')
     history_lots = db.scalars(select(PositionLot).where(PositionLot.account_id == account.id)).all()
     event_warning = lots_event(db, history_lots, now.astimezone(CN).date())
+    returns = earnings(db, account.id, now.astimezone(CN).date(), event_warning)
     for code, row in grouped.items():
         nav = db.scalar(select(FundNav).where(FundNav.fund_code == code, FundNav.nav_date <= now.astimezone(CN).date())
                         .order_by(FundNav.nav_date.desc()).limit(1))
@@ -196,6 +198,8 @@ def portfolio(db, account, now=None):
                       'sell_disabled_reason': context['disabled_reason'],
                       'cost': str(row['cost']), 'market_value': str(value) if value is not None else None,
                       'holding_profit': str(value - row['cost']) if value is not None and not event_warning else None,
+                      'holding_return': str(rounded((value - row['cost']) / row['cost'] * 100)) if value is not None and row['cost'] and not event_warning else None,
+                      'latest_profit': returns['fund_latest_profit'].get(code),
                       'nav_date': nav.nav_date if nav else None, 'unit_nav': str(nav.unit_nav) if nav else None,
                       'lots': row['lots']})
     complete = all(i['market_value'] is not None for i in items)
@@ -206,7 +210,8 @@ def portfolio(db, account, now=None):
     realized = db.scalar(select(func.coalesce(func.sum(SellAllocation.net_amount - SellAllocation.cost), 0))
         .join(SellOrder, SellAllocation.order_id == SellOrder.id).where(SellOrder.account_id == account.id,
         SellOrder.status.in_(['confirmed', 'paid'])))
-    return {'items': items, 'available_cash': str(account.available_cash), 'reserved_cash': str(account.reserved_cash),
+    return {**returns, 'items': items, 'available_cash': str(account.available_cash), 'reserved_cash': str(account.reserved_cash),
+            'holding_return': str(rounded((total - remaining_cost) / remaining_cost * 100)) if complete and remaining_cost and not event_warning else None,
             'redemption_cash': str(account.redemption_cash), 'market_value': str(total) if complete else None,
             'total_assets': str(assets) if complete else None,
             'total_profit': str(assets - initial) if complete and not event_warning else None,

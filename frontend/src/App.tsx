@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type User, type Account, type Ledger } from './api'
 import Discover from './Discover'
+import PasswordDialog from './PasswordDialog'
+import ResetDataDialog from './ResetDataDialog'
+import { MarketNavigation } from './MarketShared'
 import FundDetails from './FundDetails'
 import './market.css'
 import { SellPage, SellOrderPage } from './SellTrading'
@@ -114,6 +117,7 @@ function AccountPage({ user, signedOut }: { user: User; signedOut: (message: str
   const [refresh, setRefresh] = useState(0)
   const [busy, setBusy] = useState(false)
   const [changing, setChanging] = useState(false)
+  const [resetting, setResetting] = useState(false)
   useEffect(() => {
     let active = true
     setLoading(true); setError(''); setData(null)
@@ -131,31 +135,18 @@ function AccountPage({ user, signedOut }: { user: User; signedOut: (message: str
     catch (reason) { setError((reason as Error).message) }
     finally { setBusy(false) }
   }
-  async function changePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (busy) return
-    const form = new FormData(event.currentTarget)
-    if (form.get('new_password') !== form.get('confirm')) { setError('两次输入的新密码不一致。'); return }
-    setBusy(true); setError('')
-    try {
-      await api('/account/password', { current_password: form.get('current_password'), new_password: form.get('new_password') })
-      signedOut('密码已修改，所有会话已退出，请重新登录。')
-    } catch (reason) {
-      if (reason instanceof ApiError && reason.status === 401) signedOut('登录已过期，请重新登录。')
-      else setError((reason as Error).message)
-    } finally { setBusy(false) }
-  }
-  return <main className="account-shell account-page"><h1>我的账户</h1><p className="subtitle">管理本地账户与练习数据</p>
+  return <main className="market-shell account-shell account-page"><h1>我的</h1><p className="subtitle">账户管理与投资记录</p>
     <section className="profile-card"><div className="profile"><span className="avatar">{user.username[0].toUpperCase()}</span><div><h2>{user.username}</h2><small>本地账户 · 已登录</small></div></div>
       {data && <><p className="account-row"><span>初始模拟本金</span><strong>{money(data.ledger.items.find(e => e.kind === 'initial_capital')?.amount ?? '0')} 元</strong></p><p className="account-row"><span>可用虚拟资金</span><strong>{money(data.account.available_cash)} 元</strong></p></>}
     </section>
     {loading && <p role="status">正在加载账户…</p>}
     {error && <div className="error" role="alert">{error}<button onClick={() => setRefresh(value => value + 1)} disabled={busy}>重新加载</button></div>}
-    <h2 className="account-heading">账户与数据</h2><section className="settings-card"><button onClick={() => setChanging(!changing)} aria-expanded={changing}>修改密码<span>›</span></button><div>导出交易记录<span>暂未开放</span></div><div>备份练习数据<span>暂未开放</span></div><details><summary>数据保存位置<span>本机 ›</span></summary><p>数据保存在运行后端服务的本机 PostgreSQL 数据库中，清理浏览器不会删除账户数据。</p></details></section>
-    {changing && <form onSubmit={changePassword} className="account-form"><fieldset disabled={busy}><Password label="当前密码" name="current_password" autoComplete="current-password" /><Password label="新密码" name="new_password" /><Password label="确认新密码" name="confirm" /><button className="primary">{busy ? '正在提交…' : '修改密码并重新登录'}</button></fieldset></form>}
-    <h2 className="account-heading">资金流水</h2><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途', sell_confirmed: '卖出确认转入赎回在途', sell_paid: '赎回资金到账', dividend_paid: '现金分红到账' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>买入在途 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small><small>赎回在途 {Number(entry.redemption_delta) > 0 ? '+' : ''}{money(entry.redemption_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section>
+    <div className="account-shortcuts"><a href="#holdings"><img src="/assets/chart-pie.svg" alt="" />我的持有<small>查看资产与收益</small></a><a href="#orders"><img src="/assets/notebook-pen.svg" alt="" />交易记录<small>查看确认与到账</small></a></div><h2 className="account-heading">账户与数据</h2><section className="settings-card"><button onClick={() => setChanging(true)} disabled={busy} aria-haspopup="dialog">修改密码<span>›</span></button><button className="reset-data-entry" onClick={() => setResetting(true)} disabled={busy} aria-haspopup="dialog">重置个人数据<span>›</span></button></section>
+    {resetting && <ResetDataDialog userId={user.id} onClose={() => setResetting(false)} signedOut={signedOut} />}
+    {changing && <PasswordDialog onClose={() => setChanging(false)} signedOut={signedOut} />}
+    <details className="ledger-section"><summary>资金流水<span>收支明细</span></summary><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途', sell_confirmed: '卖出确认转入赎回在途', sell_paid: '赎回资金到账', dividend_paid: '现金分红到账' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>买入在途 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small><small>赎回在途 {Number(entry.redemption_delta) > 0 ? '+' : ''}{money(entry.redemption_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section></details>
     <aside className="soft-card"><strong>换电脑前，先备份</strong><p>本地账户不自动同步到其他设备。<br />清理数据前请保留一份数据库备份。</p></aside><Instructions />
     <button className="secondary" disabled={busy} onClick={() => void logout()}>{busy ? '正在处理…' : '退出登录'}</button>
-    <nav className="bottom-nav" aria-label="账户导航"><a href="#discover">发现</a><a href="#holdings">持仓</a><a href="#orders">交易</a><a href="#account" aria-current="page">我的</a></nav>
+    <MarketNavigation active="account" user={user} />
   </main>
 }

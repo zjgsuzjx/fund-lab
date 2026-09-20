@@ -5,5 +5,8 @@ export function ChangeValue({ value }: { value: string | null }) {
   return <strong className={value === null ? 'change-missing' : Number(value) > 0 ? 'change-up' : Number(value) < 0 ? 'change-down' : 'change-flat'}>{value === null ? '—' : `${Number(value) > 0 ? '+' : ''}${Number(value).toFixed(2)}%`}</strong>
 }
 export function MarketNavigation({ active, user }: { active: 'discover' | 'account' | 'holdings' | 'orders'; user: User | null }) {
-  return <nav className="market-nav" aria-label="主导航"><a href="#discover" aria-current={active === 'discover' ? 'page' : undefined}>发现</a><a href={user ? '#holdings' : '#login'} aria-current={active === 'holdings' ? 'page' : undefined}>持仓</a><a href={user ? '#orders' : '#login'} aria-current={active === 'orders' ? 'page' : undefined}>交易</a><a href={user ? '#account' : '#login'} aria-current={active === 'account' ? 'page' : undefined}>我的</a></nav>
+  return <nav className="market-nav" aria-label="主导航">{([
+    ['discover', '发现', 'compass'], ['holdings', '持有', 'briefcase-business'],
+    ['orders', '交易', 'chart-no-axes-column'], ['account', '我的', 'user-round'],
+  ] as const).map(([page, label, icon]) => <a key={page} href={page === 'discover' || user ? `#${page}` : '#login'} aria-current={active === page ? 'page' : undefined}><img src={`/assets/${icon}.svg`} width="23" height="23" alt="" />{label}</a>)}</nav>
 }

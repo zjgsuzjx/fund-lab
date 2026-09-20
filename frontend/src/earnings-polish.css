@@ -1,0 +1,74 @@
+/* Vivid blue surfaces with subtle highlights and bold financial figures. */
+.earnings-card,
+.discover-returns {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid #2476db;
+  border-radius: 22px;
+  background:
+    radial-gradient(ellipse at 100% 0%, #76c5ff30 0%, transparent 58%),
+    radial-gradient(ellipse at 0% 100%, #39bfff18 0%, transparent 55%),
+    linear-gradient(135deg, #1674df 0%, #1263d0 65%, #1057bd 100%);
+  box-shadow: inset 0 1px 0 #ffffff30, inset 0 -1px 0 #ffffff0a,
+    0 12px 30px -16px #3a73bf42, 0 3px 8px -5px #31578620;
+  padding: 22px 20px 18px;
+  margin-bottom: 20px;
+}
+.earnings-card::before,
+.discover-returns::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(115deg, #ffffff10, transparent 44%, #ffffff05 74%, transparent);
+}
+.earnings-card .latest-earning {padding-bottom:20px;align-items:center;gap:12px}
+.earnings-card .latest-earning>div>span {font-size:12px;color:#e1eeff;letter-spacing:.2px}
+.earnings-card .latest-earning .profit {margin-top:10px;font-size:20px;font-weight:700;line-height:1.4}
+.earnings-card .latest-earning>small {
+  padding:6px 10px;
+  border:1px solid #ffffff30;
+  border-radius:20px;
+  background:#ffffff12;
+  box-shadow:0 2px 6px #365d8f06;
+  font-size:10px;
+  color:#edf5ff;
+  text-align:center;
+  max-width:45%;
+}
+.earnings-card .earnings-grid {
+  border-top:1px solid #ffffff24;
+  background:#07439535;
+  border-radius:14px;
+  padding:16px 12px;
+  gap:10px;
+  box-shadow:0 1px 0 #ffffff12;
+}
+.earnings-card .earnings-grid span {font-size:11px;color:#e1eeff;white-space:nowrap}
+.earnings-card .earnings-grid .profit {font-size:20px;line-height:1.4;margin-top:8px;font-weight:700}
+.earnings-card .profit,.discover-returns .profit {font-family:"DIN Alternate", "Bahnschrift", "Arial", sans-serif;font-weight:700;font-variant-numeric:lining-nums tabular-nums;letter-spacing:-.35px;color:#ffffff;text-shadow:0 1px 2px #063a784d}
+.earnings-card .profit.positive,.discover-returns .profit.positive {color:#ffe58f}
+.earnings-card .profit.negative,.discover-returns .profit.negative {color:#8ff5cf}
+.discover-returns .market-title {padding-bottom:16px;border-bottom:1px solid #ffffff24}
+.discover-returns .market-title h2 {font-size:15px;font-weight:600;color:#ffffff}
+.discover-returns .market-title>a {border:1px solid #ffffff30;border-radius:16px;background:#ffffff12;padding:5px 10px;font-size:11px;color:#ffffff}
+.discover-returns .discover-profit-grid {margin-top:18px;margin-bottom:4px;gap:18px}
+.discover-returns .discover-profit-grid>div+div {border-left-color:#ffffff24;padding-left:18px}
+.discover-returns .discover-profit-grid span {font-size:12px;color:#e1eeff}
+.discover-returns .discover-profit-grid .profit {font-size:22px;font-weight:700;margin-top:10px}
+@media(hover:hover) and (prefers-reduced-motion:no-preference) {
+  .earnings-card,.discover-returns {transition:box-shadow .25s ease,border-color .25s ease}
+  .earnings-card:hover,.discover-returns:hover {border-color:#448fe7;box-shadow:inset 0 1px 0 #ffffff30,0 16px 36px -17px #3676cd55,0 3px 10px -6px #31578620}
+}
+@media(max-width:380px) {
+  .earnings-card,.discover-returns {padding:20px 16px 16px;border-radius:18px}
+  .earnings-card .earnings-grid {padding:14px 10px;gap:6px}
+  .earnings-card .earnings-grid .profit,.earnings-card .latest-earning .profit {font-size:17px}
+  .earnings-card .earnings-grid span {font-size:10px}
+}
+@media(forced-colors:active) {
+  .earnings-card,.discover-returns {background:Canvas;box-shadow:none;border:1px solid CanvasText}
+  .earnings-card::before,.discover-returns::before {display:none}
+}

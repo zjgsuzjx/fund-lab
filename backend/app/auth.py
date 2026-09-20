@@ -180,6 +180,42 @@ class PasswordChange(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class AccountReset(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+    current_password: str = Field(min_length=1, max_length=128)
+
+
+@router.post('/account/reset', status_code=204, dependencies=[Depends(write_guard), Depends(throttle)])
+def reset_account(body: AccountReset, user: CurrentUser, db: DB, request: Request, response: Response):
+    from .models import BuyOrder, DividendPayment, PositionLot, SellAllocation, SellOrder, Watchlist
+    from .trades import lock_account
+
+    row = lock_account(db, owned_account(db, user).id)
+    # Recheck after taking the account lock: another reset may have revoked this session.
+    active_session = db.scalar(select(AuthSession).where(
+        AuthSession.token_hash == token_digest(request.cookies.get(COOKIE, '')),
+        AuthSession.user_id == user.id,
+        AuthSession.expires_at > datetime.now(timezone.utc)))
+    if not active_session:
+        raise HTTPException(401, '会话已失效，请重新登录。')
+    user = db.scalar(select(User).where(User.id == user.id).with_for_update().execution_options(populate_existing=True))
+    if not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(400, '当前密码错误，未重置任何数据。')
+    db.execute(delete(SellAllocation).where(SellAllocation.order_id.in_(
+        select(SellOrder.id).where(SellOrder.account_id == row.id))))
+    for model in (DividendPayment, PositionLot, SellOrder, BuyOrder, CashLedger):
+        db.execute(delete(model).where(model.account_id == row.id))
+    db.execute(delete(Watchlist).where(Watchlist.user_id == user.id))
+    row.available_cash = INITIAL_CASH
+    row.reserved_cash = Decimal('0.00')
+    row.redemption_cash = Decimal('0.00')
+    db.add(CashLedger(account_id=row.id, event_key=f'initial:{row.id}', kind='initial_capital',
+                      amount=INITIAL_CASH, balance_after=INITIAL_CASH, available_delta=INITIAL_CASH))
+    db.execute(delete(AuthSession).where(AuthSession.user_id == user.id))
+    db.commit()
+    response.delete_cookie(COOKIE, path='/api', httponly=True, samesite='strict')
+
+
 @router.post('/account/password', status_code=204, dependencies=[Depends(write_guard), Depends(throttle)])
 def change_password(body: PasswordChange, user: CurrentUser, db: DB, response: Response):
     validate_password(body.new_password)

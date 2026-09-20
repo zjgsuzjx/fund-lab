@@ -1,3 +1,4 @@
+import { TradeReceipt, TradeTimeline, OrderReference } from './DetailShared'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type SellContext, type SellOrder, type SellQuote, type SellRequest } from './api'
 import { CancelDialog, Heading, Row, RuleNote, money, sellStatusName, time, uuid, type Props } from './Trading'
@@ -69,9 +70,9 @@ export function SellPage({ code, user, onUnauthorized }: Props & { code: string 
     const cents = Math.round(Number(context.available_shares) * 100)
     setShares((Math.floor(cents / divisor) / 100).toFixed(2)); setQuote(null); setError('')
   }
-  return <main className="market-shell trade-page"><Heading title="模拟卖出" back="holdings">赎回份额，金额以确认净值为准</Heading>
+  return <main className="market-shell trade-page entry-page"><Heading title="卖出基金" back="holdings">赎回份额，金额以确认净值为准</Heading>
     {loading ? <p role="status">正在加载可赎回份额…</p> : context && <form onSubmit={submit}>
-      <section className="trade-card buy-amount"><h2>{context.fund_name}</h2><label htmlFor="sell-shares">卖出份额（份）</label><input id="sell-shares" inputMode="decimal" autoComplete="off" placeholder="0.00" value={shares} maxLength={12} disabled={busy || !!uncertain} onChange={e => { setShares(e.target.value); setQuote(null); setError('') }} aria-describedby="shares-hint" /><p className="trade-muted">本次计价日可赎回 {money(context.available_shares)} 份 · 已冻结 {money(context.frozen_shares)} 份</p><div className="quick-amounts">{[[4, '1/4'], [2, '1/2'], [1, '全部']].map(([divisor, label]) => <button type="button" key={divisor} disabled={busy || !!uncertain} onClick={() => fraction(Number(divisor))}>{label}</button>)}</div></section>
+      <a className="entry-fund" href={`#fund/${code}?return=holdings`}><img src="/assets/briefcase-business.svg" alt="" /><span>{context.fund_name}<small>{code} · 查看基金</small></span></a><section className="trade-card buy-amount"><h2>卖出份额</h2><label htmlFor="sell-shares">卖出份额（份）</label><input id="sell-shares" inputMode="decimal" autoComplete="off" placeholder="0.00" value={shares} maxLength={12} disabled={busy || !!uncertain} onChange={e => { setShares(e.target.value); setQuote(null); setError('') }} aria-describedby="shares-hint" /><p className="trade-muted">本次计价日可赎回 {money(context.available_shares)} 份 · 已冻结 {money(context.frozen_shares)} 份</p><div className="quick-amounts">{[[4, '1/4'], [2, '1/2'], [1, '全部']].map(([divisor, label]) => <button type="button" key={divisor} disabled={busy || !!uncertain} onClick={() => fraction(Number(divisor))}>{label}</button>)}</div></section>
       <section className="trade-card"><h2>预计到账试算</h2><Row label={`参考净值（${quote?.reference_date ?? context.reference_date ?? '暂无'}）`}>{context.reference_nav ? Number(quote?.reference_nav ?? context.reference_nav).toFixed(4) : '—'}</Row><Row label="预计赎回金额">{quote ? `${money(quote.gross_amount)} 元` : '—'}</Row><Row label="赎回费率">按各批持有期分别计算</Row><Row label="预计赎回费">{quote ? `${money(quote.fee)} 元` : '—'}</Row><div className="sell-net"><Row label="预计净到账">{quote ? `${money(quote.net_amount)} 元` : '—'}</Row></div>{quoting && <p role="status">正在试算批次费用…</p>}
         {quote && <details className="trade-rules"><summary>查看 {quote.allocations.length} 笔批次费用</summary>{quote.allocations.map(a => <div className="sell-lot" key={a.lot_id}><p>{a.confirmation_date} 买入确认 · {money(a.shares)} 份</p><p>至预计赎回确认日持有 {a.holding_days} 天 · 费率 {(Number(a.fee_rate) * 100).toFixed(2)}% · 预计费用 {money(a.fee)} 元</p></div>)}</details>}
       </section>
@@ -83,7 +84,7 @@ export function SellPage({ code, user, onUnauthorized }: Props & { code: string 
       {!context.disabled_reason && Number(context.available_shares) === 0 && <p className="soft-card">暂无可赎回份额，可返回持仓查看确认与冻结状态。</p>}
       {quoteError && <div className="error" role="alert">{quoteError}<button type="button" onClick={() => setRetry(v => v + 1)}>重新试算</button></div>}
       {uncertain && !busy && <p className="soft-card" role="status">上次申请结果尚未确认。重试将使用原请求编号，不会重复冻结份额。也可先查看<a href="#orders">交易记录</a>。</p>}
-      <button className="primary" disabled={busy || (!uncertain && (!quote || quoting || !valid))}>{busy ? '正在提交…' : uncertain ? '重试并确认原卖出结果' : `确认模拟卖出 · ${valid ? money(shares) : '—'} 份`}</button>
+      <div className="submit-bar"><button className="primary" disabled={busy || (!uncertain && (!quote || quoting || !valid))}>{busy ? '正在提交…' : uncertain ? '重试并确认原卖出结果' : `确认模拟卖出 · ${valid ? money(shares) : '—'} 份`}</button><small>模拟赎回 · 到账金额以确认为准</small></div>
     </form>}
     {error && <div className="error" role="alert">{error}{!context && <button onClick={() => setRetry(v => v + 1)}>重新加载</button>}</div>}
     <footer>虚拟份额 · 费用与到账金额以确认结果为准</footer>
@@ -124,10 +125,15 @@ export function SellOrderPage({ id, submitted, user, onUnauthorized }: Props & {
     finally { pending.current = false; setBusy(false); setCancelOpen(false) }
   }
   const actual = order?.status === 'confirmed' || order?.status === 'paid'
-  return <main className="market-shell trade-page"><Heading title={submitted && order?.status === 'pending' ? '卖出申请已提交' : '卖出交易详情'} back="orders">{submitted ? '确认后转为赎回在途，到账后转为可用余额' : `模拟订单 · ${id}`}</Heading>
+  return <main className="market-shell trade-page receipt-page"><Heading title={submitted && order?.status === 'pending' ? '卖出申请已提交' : '卖出交易详情'} back="orders">{submitted ? '确认后转为赎回在途，到账后转为可用余额' : '赎回份额、确认金额与到账进度'}</Heading>
     {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => { setError(''); setRetry(v => v + 1) }}>重新加载</button></div>}
-    {order && <><section className="order-summary"><h2>{sellStatusName[order.status]}</h2><b>{money(order.shares)} 份</b><p>{order.fund_name} · {order.fund_code}</p><small>{order.status === 'cancelled' ? '已释放冻结份额，不收取赎回费。' : actual ? `确认净到账 ${money(order.net_amount)} 元${order.status === 'confirmed' ? ' · 尚不可用' : ' · 已转入可用余额'}` : `预计净到账 ${money(order.quote.net_amount)} 元 · 非最终金额`}</small></section>
-      <section className="trade-card"><h2>这笔卖出接下来会发生什么</h2><ol className="order-progress"><li><strong>申请已提交</strong><p>{time(order.created_at)} · 冻结 {money(order.shares)} 份</p></li><li><strong>{actual ? '赎回金额已确认' : order.status === 'cancelled' ? '已撤销，停止确认' : '等待净值确认'}</strong><p>计价日 {order.trade_date} · {order.confirmed_at ? time(order.confirmed_at) : `预计 ${order.confirmation_date} 起确认`}</p></li><li><strong>{order.status === 'paid' ? '资金已到账' : order.status === 'cancelled' ? '冻结份额已释放' : '等待资金到账'}</strong><p>{order.paid_at ? time(order.paid_at) : order.status === 'cancelled' && order.completed_at ? time(order.completed_at) : `模拟约定 ${order.arrival_date} 到账（T+7）`}</p></li></ol></section>
+    {order && <><TradeReceipt status={order.status} title={sellStatusName[order.status]} label="卖出份额（份）" amount={money(order.shares)} fund={order.fund_name} code={order.fund_code}>{order.status === 'cancelled' ? '冻结份额已释放，不收取赎回费。' : actual ? `确认净到账 ${money(order.net_amount)} 元${order.status === 'paid' ? ' · 已到账' : ' · 赎回在途'}` : `预计净到账 ${money(order.quote.net_amount)} 元 · 以确认为准`}</TradeReceipt>
+      <TradeTimeline cancelled={order.status === 'cancelled'} steps={[
+        { title: '申请已提交', detail: `${time(order.created_at)} · 冻结 ${money(order.shares)} 份`, complete: true },
+        { title: actual ? '赎回金额已确认' : order.status === 'cancelled' ? '确认已停止' : '等待净值确认', detail: `计价日 ${order.trade_date}${order.confirmed_at ? ` · ${time(order.confirmed_at)}` : ''}`, complete: actual },
+        { title: order.status === 'paid' ? '资金已到账' : order.status === 'cancelled' ? '冻结份额已释放' : '等待资金到账', detail: order.paid_at ? time(order.paid_at) : order.status === 'cancelled' ? '申请已撤销' : `模拟约定 ${order.arrival_date} 到账（T+7）`, complete: order.status === 'paid' || order.status === 'cancelled' },
+      ]} />
+      <OrderReference id={id} created={time(order.created_at)} />
       <section className="trade-card"><h2>{actual ? '确认金额与费用' : '提交时费用试算'}</h2><Row label={actual ? '确认净值' : `参考净值（${order.quote.reference_date}）`}>{Number(actual ? order.confirmed_nav : order.quote.reference_nav).toFixed(4)}</Row><Row label={actual ? '赎回金额' : '预计赎回金额'}>{money(actual ? order.gross_amount : order.quote.gross_amount)} 元</Row><Row label={actual ? '实际赎回费' : '预计赎回费'}>{money(order.status === 'cancelled' ? '0' : actual ? order.fee : order.quote.fee)} 元</Row><Row label={actual ? '确认净到账' : '预计净到账'}>{order.status === 'cancelled' ? '已撤销' : `${money(actual ? order.net_amount : order.quote.net_amount)} 元`}</Row>
         <details className="trade-rules"><summary>查看批次与费用</summary>{order.allocations.map(a => <div className="sell-lot" key={a.lot_id}><p>{money(a.shares)} 份 · 持有 {a.holding_days} 天 · {(Number(a.fee_rate) * 100).toFixed(2)}%</p>{actual && <p>赎回费 {money(a.fee)} 元 · 结转成本 {money(a.cost)} 元</p>}</div>)}</details>
       </section>

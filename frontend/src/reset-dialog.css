@@ -1,0 +1,6 @@
+.reset-dialog .reset-warning { margin: 20px 0; padding: 16px 18px; border: 1px solid #f4d5d0; border-radius: 14px; background: #fff6f3; color: #80514c; font-size: 13px; line-height: 1.8; }
+.reset-warning strong { color: #b63b32; font-size: 14px; }
+.reset-warning p { margin: 8px 0 0; }
+.reset-dialog button.reset-confirm { background: #c53f38; border-color: #c53f38; box-shadow: 0 5px 15px #c53f3818; }
+.reset-dialog button.reset-confirm:hover { background: #ab322c; }
+.settings-card button.reset-data-entry { color: #b63b32; }
