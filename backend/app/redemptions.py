@@ -12,7 +12,7 @@ from sqlalchemy import func, select
 
 from .auth import DB, CurrentUser, owned_account, write_guard
 from .models import BuyOrder, CashLedger, Fund, FundNav, FundSyncRun, PositionLot, SellAllocation, SellOrder
-from .trade_rules import CN, SELL_RULE, redemption_rate, redemption_schedule, rounded, utcnow
+from .trade_rules import CN, SELL_RULE, rule_for, redemption_rate, redemption_schedule, rounded, utcnow
 from .trades import Clock, ClockFunction, lock_account, lock_fund
 
 router = APIRouter(prefix='/api')
@@ -96,14 +96,16 @@ def sale_context(db, account_id, code, now):
     total = sum((l.remaining_shares for l in lots), Decimal('0.00'))
     frozen = sum((l.frozen_shares for l in lots), Decimal('0.00'))
     reason = ''
+    rule = rule_for(fund, sell=True)
     trade = confirmation = cutoff = arrival = None
     try:
-        trade, confirmation, cutoff, arrival = redemption_schedule(now)
+        if rule:
+            trade, confirmation, cutoff, arrival = redemption_schedule(now, rule)
     except HTTPException as exc:
         reason = exc.detail
-    if code != SELL_RULE['fund_code']:
+    if not rule:
         reason = '该基金尚未核验赎回规则。'
-    elif not SELL_RULE['simulation_from'] <= now.astimezone(CN).date().isoformat() <= SELL_RULE['simulation_through']:
+    elif not rule['simulation_from'] <= now.astimezone(CN).date().isoformat() <= rule['simulation_through']:
         reason = '赎回模拟规则不覆盖当前日期。'
     else:
         reason = reason or source_problem(db, code)
@@ -120,7 +122,7 @@ def sale_context(db, account_id, code, now):
         'reference_nav': str(nav.unit_nav) if nav else None, 'reference_date': nav.nav_date.isoformat() if nav else None,
         'trade_date': trade.isoformat() if trade else None, 'confirmation_date': confirmation.isoformat() if confirmation else None,
         'arrival_date': arrival.isoformat() if arrival else None, 'cancel_until': cutoff.isoformat() if cutoff else None,
-        'disabled_reason': reason, 'rule': deepcopy(SELL_RULE)}, lots
+        'disabled_reason': reason, 'rule': rule or {}}, lots
 
 
 def allocation_values(shares, nav, rate):
@@ -147,7 +149,7 @@ def sell_quote(db, account_id, body, now):
         if shares <= 0:
             continue
         days = (confirmation - lot.confirmation_date).days
-        rate = redemption_rate(days)
+        rate = redemption_rate(days, context['rule'])
         gross, fee, net = allocation_values(shares, nav, rate)
         allocations.append({'lot_id': str(lot.id), 'buy_order_id': str(lot.order_id), 'shares': str(rounded(shares)),
             'confirmation_date': lot.confirmation_date.isoformat(), 'holding_days': days, 'fee_rate': str(rate),
@@ -178,7 +180,7 @@ def create_sell(db, account_id, body, clock=utcnow):
     order = SellOrder(account_id=account.id, fund_code=body.fund_code, request_key=body.request_key, shares=body.shares,
         trade_date=date.fromisoformat(quote['trade_date']), confirmation_date=date.fromisoformat(quote['confirmation_date']),
         arrival_date=date.fromisoformat(quote['arrival_date']), cancel_until=datetime.fromisoformat(quote['cancel_until']),
-        rule_snapshot=deepcopy(SELL_RULE), quote_snapshot=quote, created_at=now)
+        rule_snapshot=deepcopy(quote['rule']), quote_snapshot=quote, created_at=now)
     db.add(order); db.flush()
     for a in quote['allocations']:
         lot = db.get(PositionLot, UUID(a['lot_id']))

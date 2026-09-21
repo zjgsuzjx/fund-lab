@@ -1,0 +1,26 @@
+.nav-chart-toolbar, .nav-chart-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.nav-chart-toolbar { margin: 4px 0 18px; }
+.nav-chart-toolbar > span, .nav-chart-value span, .nav-chart-value time {
+  color: var(--market-muted);
+  font-size: 11px;
+}
+.nav-chart-modes { display: flex; padding: 3px; background: #f1f5fa; border-radius: 9px; }
+.market-shell .nav-chart-modes button {
+  margin: 0; padding: 7px 12px; border: 0; border-radius: 7px;
+  background: transparent; color: var(--market-muted); font-size: 12px;
+}
+.market-shell .nav-chart-modes button[aria-pressed=true] {
+  color: var(--market-blue); background: white; box-shadow: 0 1px 4px #243d6010;
+}
+.nav-chart-modes button:focus-visible { outline: 2px solid var(--market-blue); outline-offset: 2px; }
+.nav-chart-value { align-items: flex-end; margin-bottom: 12px; }
+.nav-chart-value strong { display: block; margin-top: 4px; font-size: 28px; line-height: 1.25; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nav-chart-value .is-up { color: var(--market-up); }
+.nav-chart-value .is-down { color: var(--market-down); }
+.nav-chart-value time { padding-bottom: 4px; }

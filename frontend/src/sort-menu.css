@@ -1,0 +1,27 @@
+.fund-sort { position: relative; min-width: 0; }
+.market-shell .fund-sort-trigger {
+  display: flex; align-items: center; gap: 6px; margin: 0; padding: 8px 10px;
+  border: 1px solid var(--market-line); border-radius: 10px;
+  background: white; color: var(--market-muted); font-size: 12px; line-height: 1.5;
+}
+.fund-sort-trigger span { min-width: 0; }
+.fund-sort-trigger svg { flex-shrink: 0; }
+.market-shell .fund-sort-trigger[aria-expanded=true] { background: var(--market-soft); color: var(--market-blue); border-color: #cfe1fb; }
+.fund-sort-trigger[aria-expanded=true] > svg { transform: rotate(180deg); }
+.fund-sort-options {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
+  width: min(252px, calc(100vw - 48px)); padding: 8px;
+  background: white; border: 1px solid var(--market-line); border-radius: 16px;
+  box-shadow: 0 12px 36px #203a6024, 0 2px 6px #203a6008;
+}
+.market-shell .fund-sort-options > p { margin: 4px 10px 8px; color: var(--market-muted); font-size: 11px; }
+.market-shell .fund-sort-options button {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  width: 100%; padding: 11px 12px; margin: 2px 0; border: 0; border-radius: 10px;
+  background: white; color: var(--market-ink); text-align: left;
+}
+.fund-sort-options strong { display: block; font-size: 13px; font-weight: 500; line-height: 1.5; }
+.fund-sort-options small { display: block; margin-top: 2px; color: var(--market-muted); font-size: 11px; }
+.market-shell .fund-sort-options button:hover { background: #f5f7fa; }
+.market-shell .fund-sort-options button[aria-pressed=true] { background: var(--market-soft); color: var(--market-blue); }
+.fund-sort button:focus-visible { outline: 2px solid var(--market-blue); outline-offset: 2px; }

@@ -308,6 +308,24 @@ a:active {
   border-radius: 9px
 }
 
+.fund-load-more {
+  padding: 16px 0 4px;
+  text-align: center;
+  color: var(--market-muted);
+}
+
+.fund-load-more .secondary {
+  margin: 0;
+  font-size: 12px;
+}
+
+.fund-page-count {
+  margin: 12px 0;
+  text-align: center;
+  color: var(--market-muted);
+  font-size: 12px;
+}
+
 .sync-details {
   background: white;
   border-radius: 12px;
@@ -756,6 +774,32 @@ a:active {
   border-bottom: 0
 }
 
+.app-info summary::-webkit-details-marker {
+  display: none
+}
+
+.app-info-chevron {
+  display: inline-block;
+  margin-left: 8px
+}
+
+.app-info details[open] .app-info-chevron {
+  transform: rotate(90deg)
+}
+
+.app-info details p {
+  margin: 0;
+  line-height: 1.8
+}
+
+.app-info details[open] summary {
+  border-bottom: 0
+}
+
+.app-info details[open]:not(:last-child) {
+  border-bottom: 1px solid var(--market-line)
+}
+
 .ledger-section {
   background: white;
   border: 1px solid #eef1f5;
@@ -1074,6 +1118,32 @@ a:active {
 
 .detail-page .source-card p {
   font-size: 12px
+}
+
+.detail-sync {
+  flex-shrink: 0;
+  min-width: 0;
+  margin-top: 4px
+}
+
+.detail-sync section {
+  padding: 4px 0 12px;
+  line-height: 1.8;
+  overflow-wrap: anywhere
+}
+
+.detail-sync section p {
+  margin: 0 0 12px
+}
+
+.detail-sync section p:last-child {
+  margin-bottom: 0
+}
+
+.detail-sync section button {
+  max-width: 100%;
+  white-space: normal;
+  margin: 0 0 12px
 }
 
 .detail-action-bar {

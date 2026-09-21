@@ -244,3 +244,12 @@ class DataUpdateJob(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default='queued')
     message: Mapped[str] = mapped_column(String(500), default='等待更新。')
+
+
+class MarketSyncState(Base):
+    __tablename__ = 'market_sync_states'
+    key: Mapped[str] = mapped_column(String(30), primary_key=True)
+    attempted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    succeeded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20))
+    message: Mapped[str] = mapped_column(String(500))

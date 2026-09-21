@@ -3,11 +3,12 @@ import calendar
 import re
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import delete, or_, select
+from sqlalchemy import delete, or_, select, func, true, text, cast, Date, case
 from sqlalchemy.dialects.postgresql import insert
 
 from .auth import COOKIE, DB, CurrentUser, current_user, write_guard
@@ -87,19 +88,27 @@ def list_funds(db: DB, request: Request,
     watched = set(db.scalars(select(Watchlist.fund_code).where(Watchlist.user_id == user.id))) if user else set()
     if watchlist:
         query = query.where(Fund.code.in_(watched))
-    funds = db.scalars(query.order_by(Fund.code)).all()
-    # The curated pool is deliberately small. Batch reads avoid per-row queries.
-    navs = {}
-    for nav in db.scalars(select(FundNav).where(FundNav.fund_code.in_([f.code for f in funds])).order_by(FundNav.nav_date)):
-        navs.setdefault(nav.fund_code, []).append(nav)
-    items = [serialize_fund(f, navs.get(f.code, []), f.code in watched) for f in funds]
-    if sort == 'name':
-        items.sort(key=lambda f: (f['name'], f['code']))
-    elif sort != 'code':
-        key = 'unit_nav' if sort == 'nav_desc' else 'year_change'
-        direction = 1 if sort == 'change_asc' else -1
-        items.sort(key=lambda f: (f[key] is None, direction * Decimal(f[key] or '0'), f['code']))
-    return {'items': items[(page - 1) * page_size:page * page_size], 'total': len(items), 'page': page, 'page_size': page_size}
+    total = db.scalar(select(func.count()).select_from(query.subquery()))
+    # At most two indexed NAV lookups per candidate, never load the entire NAV history.
+    latest = select(FundNav.nav_date, FundNav.unit_nav).where(FundNav.fund_code == Fund.code).order_by(FundNav.nav_date.desc()).limit(1).correlate(Fund).lateral('latest')
+    baseline = select(FundNav.nav_date, FundNav.unit_nav).where(FundNav.fund_code == Fund.code,
+        FundNav.nav_date <= cast(latest.c.nav_date - text("INTERVAL '1 year'"), Date)).order_by(FundNav.nav_date.desc()).limit(1).correlate(Fund, latest).lateral('baseline')
+    query = query.select_from(Fund).add_columns(latest.c.nav_date, latest.c.unit_nav, baseline.c.nav_date, baseline.c.unit_nav).outerjoin(latest, true()).outerjoin(baseline, true())
+    if sort in ('code', 'name'):
+        query = query.order_by(Fund.name, Fund.code) if sort == 'name' else query.order_by(Fund.code)
+    else:
+        cutoff = cast(latest.c.nav_date - text("INTERVAL '1 year'"), Date)
+        change = case(((cutoff - baseline.c.nav_date <= 10) & ~Fund.is_sample,
+                       func.round((latest.c.unit_nav / baseline.c.unit_nav - 1) * 100, 2)), else_=None)
+        metric = latest.c.unit_nav if sort == 'nav_desc' else change
+        order = metric.asc() if sort == 'change_asc' else metric.desc()
+        query = query.order_by(order.nullslast(), Fund.code)
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    items = []
+    for fund, latest_date, latest_nav, base_date, base_nav in db.execute(query):
+        navs = [SimpleNamespace(nav_date=d, unit_nav=n) for d, n in ((base_date, base_nav), (latest_date, latest_nav)) if d]
+        items.append(serialize_fund(fund, navs, fund.code in watched))
+    return {'items': items, 'total': total, 'page': page, 'page_size': page_size}
 
 
 @router.get('/funds/{code}')
@@ -123,8 +132,8 @@ def detail(code: str, db: DB, request: Request):
     if not disabled_reason(fund):
         result['rules'].update(status='simulation_verified', minimum_purchase='1.00 元',
                                confirmation='T+1 起，等待正式净值',
-                               arrival='赎回 T+7 到账（本模拟方案约定）', note=rule_snapshot()['scope'])
-        result['simulation_rule'] = rule_snapshot()
+                               arrival='赎回 T+7 到账（本模拟方案约定）', note=rule_snapshot(fund)['scope'])
+        result['simulation_rule'] = rule_snapshot(fund)
     return result
 
 

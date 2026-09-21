@@ -28,7 +28,7 @@ export type SyncRuns = {
 export type User = { id: string; username: string; created_at: string }
 export type Account = { id: string; available_cash: string; reserved_cash: string; redemption_cash: string; total_profit: string | null; total_assets: string | null; created_at: string }
 export type Ledger = { items: { id: string; kind: string; amount: string; balance_after: string; available_delta: string; reserved_delta: string; reserved_after: string; redemption_delta: string; redemption_after: string; created_at: string }[] }
-export type SimulationRule = { version: string; name: string; minimum: string; scope: string; sources: { url: string; published_on: string; pages?: string }[] }
+export type SimulationRule = { version: string; name: string; minimum: string; scope: string; sources: { url: string; published_on?: string; pages?: string }[] }
 export type BuyQuote = {
   fund_code: string; fund_name: string; amount: string; fee: string; net_amount: string;
   fee_label: string; available_cash: string; trade_date: string; confirmation_date: string; cancel_until: string;

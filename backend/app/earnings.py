@@ -1,6 +1,7 @@
 """Economic-date earnings reconstructed from confirmed trades, not today's lots."""
 from datetime import timedelta
 from decimal import Decimal
+from fastapi import HTTPException
 
 from sqlalchemy import select
 
@@ -38,14 +39,17 @@ def earnings(db, account_id, today, warning=''):
     latest = max((n.nav_date for n in nav_rows), default=None)
     payments = db.execute(select(DividendPayment, DividendEvent).join(DividendEvent).where(DividendPayment.account_id == account_id)).all()
     series, by_fund = [], {}
-    if latest and latest.year == 2026:
+    if latest:
         for offset in range(29, -1, -1):
             day = latest - timedelta(days=offset)
-            if day.year != 2026 or not trading_day(day):
+            try:
+                if not trading_day(day):
+                    continue
+                previous = day - timedelta(days=1)
+                while not trading_day(previous):
+                    previous -= timedelta(days=1)
+            except HTTPException:
                 continue
-            previous = day - timedelta(days=1)
-            while previous.year == 2026 and not trading_day(previous):
-                previous -= timedelta(days=1)
             daily = {}
             for code in codes:
                 cb = [b for b in buys if b.fund_code == code]

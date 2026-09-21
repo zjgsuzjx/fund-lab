@@ -31,3 +31,4 @@ backups/
 .DS_Store
 Thumbs.db
 /data/.sync-cache/
+/data/calendars/

@@ -42,12 +42,15 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(worker())
     async def updater():
         while not stop.is_set():
+            delay = 60
             try:
-                await asyncio.to_thread(update_due)
+                result = await asyncio.to_thread(update_due)
+                if result and result.get('processed', 0) >= 20:
+                    delay = 1
             except Exception:
                 logging.getLogger(__name__).warning('Data update deferred; check database and migrations.')
             try:
-                await asyncio.wait_for(stop.wait(), timeout=60)
+                await asyncio.wait_for(stop.wait(), timeout=delay)
             except TimeoutError:
                 pass
     update_task = asyncio.create_task(updater())

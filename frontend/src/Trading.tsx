@@ -4,6 +4,7 @@ import { formatMoney, MarketNavigation } from './MarketShared'
 import './trading.css'
 import Holdings from './Holdings'
 import { TradeReceipt, TradeTimeline, OrderReference } from './DetailShared'
+import PageHeader from './PageHeader'
 
 export type Props = { user: User; onUnauthorized: (message: string) => void }
 export const time = (value: string) => new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -11,8 +12,8 @@ export const sellStatusName = { pending: '卖出待确认', confirmed: '赎回�
 const statusName = { pending: '买入待确认', confirmed: '买入已确认', cancelled: '申请已撤销' }
 export const money = (value: string | null) => value === null ? '—' : formatMoney(value)
 export function Row({ label, children }: { label: string; children: ReactNode }) { return <div className="trade-row"><span>{label}</span><strong>{children}</strong></div> }
-export function Heading({ title, back = 'discover', children }: { title: string; back?: string; children?: ReactNode }) {
-  return <><div className="detail-title"><a href={`#${back}`} aria-label="返回">‹</a><h1>{title}</h1></div><p className="trade-subtitle">{children}</p></>
+export function Heading({ title, back = 'discover' }: { title: string; back?: string }) {
+  return <PageHeader title={title} back={back} />
 }
 export function RuleNote({ rule }: { rule: SimulationRule }) { return <details className="trade-rules"><summary>{rule.name} · 规则与来源</summary><p>{rule.scope}</p>{rule.sources.map(source => <a key={source.url} href={source.url} target="_blank" rel="noreferrer">{source.pages ? `招募说明书，第 ${source.pages} 页` : '交易日历来源'} ↗</a>)}</details> }
 export function uuid() {
@@ -83,7 +84,7 @@ export function BuyPage({ code, user, onUnauthorized }: Props & { code: string }
       failed(reason)
     } finally { pending.current = false; setBusy(false) }
   }
-  return <main className="market-shell trade-page entry-page"><Heading title="买入基金" back={`fund/${code}`}>仅使用虚拟余额，不发生真实扣款</Heading>
+  return <main className="market-shell trade-page entry-page"><Heading title="买入基金" back={`fund/${code}`} />
     {loading ? <p role="status">正在加载买入信息…</p> : fund && account && <form onSubmit={submit}>
       <a className="entry-fund" href={`#fund/${code}`}><img src="/assets/briefcase-business.svg" alt="" /><span>{fund.name}<small>{code} · 查看基金</small></span></a><section className="trade-card buy-amount"><h2>买入金额</h2><p className="trade-muted">{fund.code} · {fund.category}</p><label htmlFor="buy-amount">买入金额（元）</label><input id="buy-amount" inputMode="decimal" autoComplete="off" value={amount} maxLength={12} disabled={busy || !!uncertain} onChange={e => { setAmount(e.target.value); setQuote(null); setError('') }} aria-describedby="amount-hint" />
         <p className="trade-muted">可用模拟余额 {money(account.available_cash)} 元</p><div className="quick-amounts">{[100, 1000, 5000].map(value => <button type="button" key={value} disabled={busy || !!uncertain} onClick={() => { setAmount((Number(amount || 0) + value).toFixed(2)); setQuote(null) }}>+{value.toLocaleString()}</button>)}</div>
@@ -144,7 +145,7 @@ export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { i
     catch (reason) { failed(reason); setRetry(v => v + 1) }
     finally { pending.current = false; setBusy(false); setCancelOpen(false) }
   }
-  return <main className="market-shell trade-page receipt-page"><Heading title={pendingPage && order ? statusName[order.status] : '交易详情'} back="orders">{pendingPage ? '申请已提交，确认结果会自动更新' : '买入金额、确认进度与费用明细'}</Heading>
+  return <main className="market-shell trade-page receipt-page"><Heading title={pendingPage && order ? statusName[order.status] : '交易详情'} back="orders" />
     {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => setRetry(v => v + 1)}>重新加载</button></div>}
     {order && <><TradeReceipt status={order.status} title={statusName[order.status]} label="买入金额（元）" amount={money(order.amount)} fund={order.fund_name} code={order.fund_code}>{order.status === 'pending' ? '等待正式净值确认，份额确认后计入持有。' : order.status === 'confirmed' ? '份额已确认，可前往持有查看收益。' : '预留资金已退回可用余额。'}</TradeReceipt><Progress order={order} />
       {!pendingPage && <section className="trade-card"><h2>资金与费用</h2><Row label="支付方式">模拟余额</Row><Row label={order.status === 'pending' ? '预计申购费' : '实际申购费'}>{money(order.status === 'cancelled' ? '0' : order.fee)} 元</Row><Row label={order.status === 'pending' ? '预计净申购金额' : '净申购金额'}>{order.status === 'cancelled' ? '已撤销' : `${money(order.net_amount)} 元`}</Row><Row label="确认净值">{order.confirmed_nav ? Number(order.confirmed_nav).toFixed(4) : '—'}</Row><Row label="确认份额">{order.shares ? `${money(order.shares)} 份` : '—'}</Row></section>}

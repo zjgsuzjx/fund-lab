@@ -70,7 +70,7 @@ export function SellPage({ code, user, onUnauthorized }: Props & { code: string 
     const cents = Math.round(Number(context.available_shares) * 100)
     setShares((Math.floor(cents / divisor) / 100).toFixed(2)); setQuote(null); setError('')
   }
-  return <main className="market-shell trade-page entry-page"><Heading title="卖出基金" back="holdings">赎回份额，金额以确认净值为准</Heading>
+  return <main className="market-shell trade-page entry-page"><Heading title="卖出基金" back="holdings" />
     {loading ? <p role="status">正在加载可赎回份额…</p> : context && <form onSubmit={submit}>
       <a className="entry-fund" href={`#fund/${code}?return=holdings`}><img src="/assets/briefcase-business.svg" alt="" /><span>{context.fund_name}<small>{code} · 查看基金</small></span></a><section className="trade-card buy-amount"><h2>卖出份额</h2><label htmlFor="sell-shares">卖出份额（份）</label><input id="sell-shares" inputMode="decimal" autoComplete="off" placeholder="0.00" value={shares} maxLength={12} disabled={busy || !!uncertain} onChange={e => { setShares(e.target.value); setQuote(null); setError('') }} aria-describedby="shares-hint" /><p className="trade-muted">本次计价日可赎回 {money(context.available_shares)} 份 · 已冻结 {money(context.frozen_shares)} 份</p><div className="quick-amounts">{[[4, '1/4'], [2, '1/2'], [1, '全部']].map(([divisor, label]) => <button type="button" key={divisor} disabled={busy || !!uncertain} onClick={() => fraction(Number(divisor))}>{label}</button>)}</div></section>
       <section className="trade-card"><h2>预计到账试算</h2><Row label={`参考净值（${quote?.reference_date ?? context.reference_date ?? '暂无'}）`}>{context.reference_nav ? Number(quote?.reference_nav ?? context.reference_nav).toFixed(4) : '—'}</Row><Row label="预计赎回金额">{quote ? `${money(quote.gross_amount)} 元` : '—'}</Row><Row label="赎回费率">按各批持有期分别计算</Row><Row label="预计赎回费">{quote ? `${money(quote.fee)} 元` : '—'}</Row><div className="sell-net"><Row label="预计净到账">{quote ? `${money(quote.net_amount)} 元` : '—'}</Row></div>{quoting && <p role="status">正在试算批次费用…</p>}
@@ -125,7 +125,7 @@ export function SellOrderPage({ id, submitted, user, onUnauthorized }: Props & {
     finally { pending.current = false; setBusy(false); setCancelOpen(false) }
   }
   const actual = order?.status === 'confirmed' || order?.status === 'paid'
-  return <main className="market-shell trade-page receipt-page"><Heading title={submitted && order?.status === 'pending' ? '卖出申请已提交' : '卖出交易详情'} back="orders">{submitted ? '确认后转为赎回在途，到账后转为可用余额' : '赎回份额、确认金额与到账进度'}</Heading>
+  return <main className="market-shell trade-page receipt-page"><Heading title={submitted && order?.status === 'pending' ? '卖出申请已提交' : '卖出交易详情'} back="orders" />
     {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => { setError(''); setRetry(v => v + 1) }}>重新加载</button></div>}
     {order && <><TradeReceipt status={order.status} title={sellStatusName[order.status]} label="卖出份额（份）" amount={money(order.shares)} fund={order.fund_name} code={order.fund_code}>{order.status === 'cancelled' ? '冻结份额已释放，不收取赎回费。' : actual ? `确认净到账 ${money(order.net_amount)} 元${order.status === 'paid' ? ' · 已到账' : ' · 赎回在途'}` : `预计净到账 ${money(order.quote.net_amount)} 元 · 以确认为准`}</TradeReceipt>
       <TradeTimeline cancelled={order.status === 'cancelled'} steps={[

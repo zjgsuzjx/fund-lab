@@ -27,7 +27,7 @@ def cash_note_matches(note, amount):
 
 class ReviewedDividend(BaseModel):
     model_config = ConfigDict(extra='forbid')
-    fund_code: Literal['000147']
+    fund_code: str = Field(pattern=r'^[0-9]{6}$')
     record_date: date
     ex_date: date
     pay_date: date
@@ -205,12 +205,16 @@ def payments(user: CurrentUser, db: DB):
 def main():
     parser = argparse.ArgumentParser(description='导入经人工核验的现金分红公告；不直接触发到账。')
     parser.add_argument('file', type=Path, nargs='?')
-    parser.add_argument('--list', action='store_true', help='列出 000147 已同步的分红事件及核验状态')
+    parser.add_argument('--list', action='store_true', help='列出已同步的分红事件及核验状态')
+    parser.add_argument('--code', help='按六位基金代码筛选分红事件')
     args = parser.parse_args()
     from .db import get_engine
     with Session(get_engine()) as db:
         if args.list:
-            for event in db.scalars(select(DividendEvent).where(DividendEvent.fund_code == '000147').order_by(DividendEvent.record_date.desc())):
+            query = select(DividendEvent).order_by(DividendEvent.record_date.desc())
+            if args.code:
+                query = query.where(DividendEvent.fund_code == args.code)
+            for event in db.scalars(query):
                 print(f'{event.record_date} | 除息 {event.ex_date or "待核验"} | 发放 {event.pay_date} | 每份 {event.cash_per_share} | {event.status}')
             return
         if not args.file:

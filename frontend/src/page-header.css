@@ -1,0 +1,60 @@
+.subpage-header {
+  flex-shrink: 0;
+  margin-bottom: 20px;
+  padding: 14px 10px;
+  background: linear-gradient(120deg, #e4efff, #f0f6ff);
+  border: 1px solid #dce9fb;
+  border-radius: 18px;
+}
+
+.subpage-header-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+
+.market-shell .subpage-back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: #24558c;
+  background: #ffffffb3;
+  border: 1px solid #ffffff;
+  border-radius: 14px;
+  text-decoration: none;
+}
+
+.market-shell .subpage-back:hover {
+  background: white;
+}
+
+.subpage-back:focus-visible {
+  outline: 2px solid var(--market-blue);
+  outline-offset: 3px;
+}
+
+.market-shell .subpage-header h1 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #23466f;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.detail-page .detail-subtitle {
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 360px) {
+  .market-shell .subpage-header h1 {
+    font-size: 18px;
+  }
+}

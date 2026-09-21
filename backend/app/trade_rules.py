@@ -14,9 +14,9 @@ CENT = Decimal('0.01')
 PROSPECTUS = 'https://cdn.efunds.com.cn/owch/data/bulletin/20260131/易方达高等级信用债债券型证券投资基金更新的招募说明书.pdf'
 CALENDAR_SOURCE = 'https://www.sse.com.cn/disclosure/announcement/general/c/c_20251222_10802507.shtml'
 RULE = {
-    'version': '000147-public-standard-sim-v1', 'fund_code': '000147',
+    'version': '000147-public-standard-sim-v2', 'fund_code': '000147',
     'name': '公开标准费率模拟方案', 'observed_on': '2026-09-14',
-    'simulation_from': '2026-09-14', 'simulation_through': '2026-12-31',
+    'simulation_from': '2026-09-14', 'simulation_through': '9999-12-31',
     'minimum': '1.00', 'rounding': 'ROUND_HALF_UP', 'money_decimals': 2, 'share_decimals': 2,
     'fee_tiers': [{'below': '1000000', 'rate': '0.008'}, {'below': '2000000', 'rate': '0.005'},
                   {'below': '5000000', 'rate': '0.003'}, {'below': None, 'fixed': '1000.00'}],
@@ -28,12 +28,6 @@ RULE = {
              'T+1 起且正式 T 日净值已同步后确认。不模拟渠道折扣、实时限购或临时停牌公告，'
              '不代表支付宝或其他销售渠道当前可购买状态。',
 }
-HOLIDAY_RANGES = [('2026-01-01', '2026-01-03'), ('2026-02-15', '2026-02-23'),
-                  ('2026-04-04', '2026-04-06'), ('2026-05-01', '2026-05-05'),
-                  ('2026-06-19', '2026-06-21'), ('2026-09-25', '2026-09-27'),
-                  ('2026-10-01', '2026-10-07')]
-
-
 def utcnow():
     return datetime.now(timezone.utc)
 
@@ -43,9 +37,8 @@ def rounded(value):
 
 
 def trading_day(day):
-    if day.year != 2026:
-        raise HTTPException(409, '该日期的交易日历尚未核验，暂不能提交。')
-    return day.weekday() < 5 and not any(start <= day.isoformat() <= end for start, end in HOLIDAY_RANGES)
+    from .trading_calendar import is_trading_day
+    return is_trading_day(day)
 
 
 def next_trading_day(day):
@@ -55,12 +48,15 @@ def next_trading_day(day):
     return day
 
 
-def schedule(now):
+def schedule(now, rule=RULE):
     local = now.astimezone(CN)
     day = local.date()
     if not trading_day(day) or local.time() >= time(15):
         day = next_trading_day(day)
-    return day, next_trading_day(day), datetime.combine(day, time(15), CN)
+    confirmation = day
+    for _ in range(rule['confirmation_days']):
+        confirmation = next_trading_day(confirmation)
+    return day, confirmation, datetime.combine(day, time(15), CN)
 
 
 def fees(amount, rule=RULE):
@@ -71,27 +67,32 @@ def fees(amount, rule=RULE):
 
 def disabled_reason(fund, now=None):
     now = now or utcnow()
-    if not fund or fund.code != RULE['fund_code'] or not fund.trade_enabled:
+    if not fund:
         return '尚未启用已核验的模拟买入方案。'
+    rule = rule_for(fund)
+    if not rule:
+        return '该产品需要专用交易或收益模型，目前仅支持目录展示。'
+    if not fund.trade_enabled:
+        return '尚未启用模拟买入方案，请先成功同步基金数据。'
     if fund.is_sample or not fund.last_sync_at or now - fund.last_sync_at > timedelta(days=7):
         return '净值数据尚未同步或已超过 7 天，请先完成数据同步。'
-    if not RULE['simulation_from'] <= now.astimezone(CN).date().isoformat() <= RULE['simulation_through']:
+    if not rule['simulation_from'] <= now.astimezone(CN).date().isoformat() <= rule['simulation_through']:
         return '模拟规则版本不覆盖当前日期，等待核验新版本。'
     try:
-        schedule(now)
+        schedule(now, rule)
     except HTTPException as exc:
         return exc.detail
     return ''
 
 
-def rule_snapshot():
-    return deepcopy(RULE)
+def rule_snapshot(fund=None):
+    return rule_for(fund) if fund else deepcopy(RULE)
 
 
 SELL_RULE = {
-    'version': '000147-redemption-sim-v1', 'fund_code': '000147',
+    'version': '000147-redemption-sim-v2', 'fund_code': '000147',
     'name': '公开标准赎回费率模拟方案', 'minimum': '0.01',
-    'simulation_from': '2026-09-17', 'simulation_through': '2026-12-31',
+    'simulation_from': '2026-09-17', 'simulation_through': '9999-12-31',
     'rounding': 'ROUND_HALF_UP', 'allocation': 'FIFO', 'arrival_days': 7,
     'fee_tiers': [{'below_days': 7, 'rate': '0.015'}, {'below_days': 30, 'rate': '0.0075'},
                   {'below_days': 365, 'rate': '0.001'}, {'below_days': 730, 'rate': '0.0005'},
@@ -111,9 +112,33 @@ def redemption_rate(days, rule=SELL_RULE):
     return Decimal(next(t['rate'] for t in rule['fee_tiers'] if t['below_days'] is None or days < t['below_days']))
 
 
-def redemption_schedule(now):
-    trade, confirmation, cutoff = schedule(now)
+def redemption_schedule(now, rule=SELL_RULE):
+    trade, confirmation, cutoff = schedule(now, {**rule, 'confirmation_days': rule.get('confirmation_days', 1)})
     arrival = trade
-    for _ in range(SELL_RULE['arrival_days']):
+    for _ in range(rule['arrival_days']):
         arrival = next_trading_day(arrival)
     return trade, confirmation, cutoff, arrival
+
+
+def rule_for(fund, *, sell=False):
+    """Independent immutable snapshots; generic fees are simulator assumptions."""
+    if fund.code == (SELL_RULE if sell else RULE)['fund_code']:
+        return deepcopy(SELL_RULE if sell else RULE)
+    label = (fund.name + fund.category).upper()
+    if any(term in label for term in ('QDII', '货币', '理财', 'REIT', 'FOF', '定开', '定期开放', '持有', '封闭', '养老', '美元', '港股', '香港')):
+        return None
+    if 'ETF' in label and '联接' not in label:
+        return None
+    if not any(term in fund.category for term in ('债券', '混合', '股票', '指数')):
+        return None
+    rule = deepcopy(SELL_RULE if sell else RULE)
+    rule.update(version=f'{fund.code}-generic-{"sell" if sell else "buy"}-v1', fund_code=fund.code,
+                name='通用练习费率（非基金实际费率）', simulation_from='2025-01-01',
+                simulation_through='9999-12-31', confirmation_days=1,
+                sources=[{'url': 'https://www.sse.com.cn/disclosure/dealinstruc/closed/'}],
+                scope='通用模拟假设：1 元起购，申购费固定为 0；赎回持有不足 7 天收取 1.5%，满 7 天为 0。'
+                      '按境内交易日 15:00 截止、T+1 起等待正式净值确认、赎回 T+7 到账。'
+                      '不代表该基金合同、支付宝费率、实时限购或实际到账时间；未核验分红/拆分暂停赎回。')
+    rule['fee_tiers'] = ([{'below_days': 7, 'rate': '0.015'}, {'below_days': None, 'rate': '0'}] if sell
+                         else [{'below': None, 'rate': '0'}])
+    return rule

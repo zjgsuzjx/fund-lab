@@ -60,16 +60,17 @@ def ensure_tradable(db, code, now):
 
 def quote_values(db, body, account, now):
     fund = ensure_tradable(db, body.fund_code, now)
-    if body.amount < Decimal(RULE['minimum']):
-        raise HTTPException(422, f"本模拟方案 {RULE['minimum']} 元起购。")
+    rule = rule_snapshot(fund)
+    if body.amount < Decimal(rule['minimum']):
+        raise HTTPException(422, f"本模拟方案 {rule['minimum']} 元起购。")
     if body.amount > account.available_cash:
         raise HTTPException(409, '可用模拟余额不足，请调整买入金额。')
-    trade_date, confirmation_date, cancel_until = schedule(now)
-    fee, net, tier = fees(body.amount)
+    trade_date, confirmation_date, cancel_until = schedule(now, rule)
+    fee, net, tier = fees(body.amount, rule)
     return {'fund_code': fund.code, 'fund_name': fund.name, 'amount': str(rounded(body.amount)),
             'fee': str(fee), 'net_amount': str(net), 'fee_label': f"{Decimal(tier['rate']) * 100:.2f}%" if 'rate' in tier else f"{tier['fixed']} 元/笔",
             'trade_date': trade_date, 'confirmation_date': confirmation_date, 'cancel_until': cancel_until,
-            'available_cash': str(account.available_cash), 'rule_version': RULE['version'], 'rule': rule_snapshot()}
+            'available_cash': str(account.available_cash), 'rule_version': rule['version'], 'rule': rule}
 
 
 def add_ledger(db, account, order, kind, available_delta, reserved_delta, now):
@@ -93,7 +94,7 @@ def create_buy(db, account_id, body, clock=utcnow):
     lock_fund(db, body.fund_code)
     now = clock()  # After locks, so waiting across 15:00 cannot get the earlier date.
     values = quote_values(db, body, account, now)
-    if body.rule_version != RULE['version'] or body.trade_date != values['trade_date']:
+    if body.rule_version != values['rule_version'] or body.trade_date != values['trade_date']:
         raise HTTPException(409, '交易日期或规则已变化，请重新试算后确认。')
     order = BuyOrder(account_id=account.id, fund_code=body.fund_code, request_key=body.request_key,
                      amount=body.amount, fee=Decimal(values['fee']), net_amount=Decimal(values['net_amount']),

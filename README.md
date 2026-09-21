@@ -41,19 +41,17 @@ conda run -n simulate-alipay python -m alembic -c backend/alembic.ini upgrade he
 conda run -n simulate-alipay --cwd backend python -m app.seed
 ```
 
-演示数据为历史样本，默认不开放交易。真实数据更新与模拟交易配置见[开发指南](docs/开发指南.md)。
+演示数据为历史样本，默认不开放交易。后端启动后自动导入全市场目录并分批同步净值，支持的普通净值型基金同步成功后开放通用模拟交易。覆盖范围、模拟费率及定时策略见[多基金与自动同步](docs/多基金与自动同步.md)。
 
 **3. 启动应用**
 
 打开两个终端，均进入仓库根目录，分别执行：
 
 ```powershell
-# 终端 1：后端
 conda run -n simulate-alipay --no-capture-output --cwd backend python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ```powershell
-# 终端 2：前端
 npm --prefix frontend run dev
 ```
 

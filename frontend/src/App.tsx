@@ -1,3 +1,4 @@
+import AppInfo from './AppInfo'
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { api, ApiError, type User, type Account, type Ledger } from './api'
 import Discover from './Discover'
@@ -145,7 +146,7 @@ function AccountPage({ user, signedOut }: { user: User; signedOut: (message: str
     {resetting && <ResetDataDialog userId={user.id} onClose={() => setResetting(false)} signedOut={signedOut} />}
     {changing && <PasswordDialog onClose={() => setChanging(false)} signedOut={signedOut} />}
     <details className="ledger-section"><summary>资金流水<span>收支明细</span></summary><section className="profile-card">{data?.ledger.items.map(entry => <div className="ledger-row" key={entry.id}><div><strong>{({ initial_capital: '初始模拟本金', buy_reserved: '买入资金预留', buy_cancelled: '撤单资金退回', buy_confirmed: '买入确认扣除在途', sell_confirmed: '卖出确认转入赎回在途', sell_paid: '赎回资金到账', dividend_paid: '现金分红到账' } as Record<string, string>)[entry.kind] ?? entry.kind}</strong><small>{new Date(entry.created_at).toLocaleString('zh-CN')}</small></div><div><strong>{Number(entry.available_delta) > 0 ? '+' : ''}{money(entry.available_delta)}</strong><small>可用余额 {money(entry.balance_after)}</small><small>买入在途 {Number(entry.reserved_delta) > 0 ? '+' : ''}{money(entry.reserved_delta)}</small><small>赎回在途 {Number(entry.redemption_delta) > 0 ? '+' : ''}{money(entry.redemption_delta)}</small></div></div>)}{data && data.ledger.items.length === 0 && <p>暂无资金流水</p>}</section></details>
-    <aside className="soft-card"><strong>换电脑前，先备份</strong><p>本地账户不自动同步到其他设备。<br />清理数据前请保留一份数据库备份。</p></aside><Instructions />
+    <AppInfo />
     <button className="secondary" disabled={busy} onClick={() => void logout()}>{busy ? '正在处理…' : '退出登录'}</button>
     <MarketNavigation active="account" user={user} />
   </main>

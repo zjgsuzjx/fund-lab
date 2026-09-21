@@ -1,4 +1,4 @@
-"""Bounded, explicit CLI synchronization for the five verified display-only funds.
+"""Public market directory and bounded per-fund NAV synchronization.
 
 python -m app.sync_funds          # bootstrap 400 days, then overlap/incremental
 python -m app.sync_funds --full   # fill all upstream history (more requests)
@@ -6,7 +6,9 @@ python -m app.sync_funds --full   # fill all upstream history (more requests)
 import argparse
 import hashlib
 import json
+import re
 import time
+from threading import Lock
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from urllib.error import HTTPError, URLError
@@ -16,6 +18,7 @@ from uuid import uuid4
 
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 
 from .config import ROOT
 from .db import get_engine
@@ -38,6 +41,8 @@ class RevisionConflict(SourceFailure):
 
 
 class Transport:
+    _gate = Lock()
+    _last_request = 0.0
     def __init__(self, run_id, raw_root=ROOT / 'data' / '.sync-cache'):
         self.directory = raw_root / str(run_id)
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -46,8 +51,9 @@ class Transport:
 
     def get(self, url):
         for attempt in range(3):
-            time.sleep(max(0, 1 - (time.monotonic() - self.last_request)))
-            self.last_request = time.monotonic()
+            with self._gate:
+                time.sleep(max(0, 1 - (time.monotonic() - Transport._last_request)))
+                Transport._last_request = time.monotonic()
             try:
                 request = Request(url, headers={'Referer': 'https://fundf10.eastmoney.com/', 'User-Agent': 'FundLab-ReadOnlySync/0.3'})
                 with urlopen(request, timeout=20) as response:
@@ -74,15 +80,18 @@ class Transport:
         raise SourceFailure('来源请求失败。')
 
 
-def fetch_bundle(code, transport, *, latest_cached=None, full=False):
-    directory = parse_directory(transport.get(DIRECTORY))
+def fetch_bundle(code, transport, *, latest_cached=None, full=False, directory=None, bootstrap_days=400):
+    directory = directory if directory is not None else parse_directory(transport.get(DIRECTORY))
     item = directory.get(code)
-    if not item or 'QDII' in (item['name'] + item['type']).upper():
+    if not item or '货币' in item['type']:
         raise SourceFailure('目录身份不符或产品不在已支持范围。')
-    official_url = f'https://www.efunds.com.cn/fund/{code}.shtml'
-    official = parse_official(transport.get(official_url))
-    if official['identity'].get('基金代码') != code or not official['subscription_fees'] or not official['redemption_fees']:
-        raise SourceFailure('官网身份或费率字段缺失，保留已有数据。')
+    official_url = f'https://fundf10.eastmoney.com/jjjz_{code}.html'
+    official = {'subscription_fees': [], 'redemption_fees': [], 'ongoing_fees': [], 'dividend_rows': []}
+    if code in CODES:
+        official_url = f'https://www.efunds.com.cn/fund/{code}.shtml'
+        official = parse_official(transport.get(official_url))
+        if official['identity'].get('基金代码') != code or not official['subscription_fees'] or not official['redemption_fees']:
+            raise SourceFailure('官网身份或费率字段缺失，保留已有数据。')
     rows, expected_total, cutoff = [], None, None
     for page in range(1, 1001):
         url = 'https://api.fund.eastmoney.com/f10/lsjz?' + urlencode({'fundCode': code, 'pageIndex': page, 'pageSize': PAGE_SIZE})
@@ -92,7 +101,7 @@ def fetch_bundle(code, transport, *, latest_cached=None, full=False):
             if not 1 <= total <= PAGE_SIZE * 1000 or not batch:
                 raise SourceFailure('历史净值数量异常。')
             end = date.fromisoformat(batch[0]['date'])
-            cutoff = (latest_cached - timedelta(days=14)) if latest_cached else end - timedelta(days=400)
+            cutoff = (latest_cached - timedelta(days=14)) if latest_cached else end - timedelta(days=bootstrap_days)
         if total != expected_total or not batch or len(batch) != min(PAGE_SIZE, total - len(rows)):
             raise SourceFailure('来源分页不完整或分页期间数据发生变化，请重新同步。')
         if rows and rows[-1]['date'] <= batch[0]['date']:
@@ -100,11 +109,28 @@ def fetch_bundle(code, transport, *, latest_cached=None, full=False):
         rows.extend(batch)
         if len(rows) == total or (not full and date.fromisoformat(rows[-1]['date']) <= cutoff):
             break
-    crosscheck = compare_nav(official['nav_rows'], rows)
-    if not crosscheck['passed']:
+    crosscheck = compare_nav(official['nav_rows'], rows) if code in CODES else None
+    if crosscheck and not crosscheck['passed']:
         raise SourceFailure('官网与净值来源交叉核对失败，保留已有数据。')
     return {'directory': item, 'official': official, 'rows': rows, 'history_complete': len(rows) == expected_total,
-            'source_url': official_url, 'observed_at': datetime.now(timezone.utc)}
+            'source_url': official_url, 'observed_at': datetime.now(timezone.utc), 'crosschecked': bool(crosscheck)}
+
+
+def sync_directory(db, transport):
+    """Import the whole public directory; never delete holdings when a fund disappears."""
+    items = parse_directory(transport.get(DIRECTORY))
+    if not items:
+        raise SourceFailure('基金目录为空，保留已有目录。')
+    now = datetime.now(timezone.utc)
+    values = [{'code': code, 'name': item['name'], 'category': item['type'],
+               'source_url': f'https://fundf10.eastmoney.com/jjjz_{code}.html',
+               'source_observed_at': now} for code, item in items.items()]
+    for offset in range(0, len(values), 500):
+        statement = insert(Fund).values(values[offset:offset + 500])
+        db.execute(statement.on_conflict_do_update(index_elements=[Fund.code],
+                   set_={'name': statement.excluded.name, 'category': statement.excluded.category}))
+    db.commit()
+    return len(items)
 
 
 def apply_bundle(db, fund, bundle):
@@ -152,19 +178,23 @@ def apply_bundle(db, fund, bundle):
     evidence.subscription_fees = bundle['official']['subscription_fees']
     evidence.redemption_fees = bundle['official']['redemption_fees']
     evidence.ongoing_fees = bundle['official']['ongoing_fees']
-    evidence.is_snapshot = False
+    evidence.is_snapshot = not bundle.get('crosschecked', True)
     fund.name, fund.category = bundle['directory']['name'], bundle['directory']['type']
     fund.source_url, fund.source_observed_at = bundle['source_url'], bundle['observed_at']
     fund.last_sync_at, fund.is_sample = bundle['observed_at'], False
     fund.history_complete = fund.history_complete or bundle['history_complete']
+    # Generic simulation assumptions are deliberately distinct from published fees.
+    if fund.code != '000147':
+        from .trade_rules import rule_for
+        fund.trade_enabled = rule_for(fund) is not None
     observe_events(db, fund, bundle['official'], bundle['observed_at'], bundle['source_url'])
     db.flush()
     return inserted, unchanged
 
 
-def synchronize(db, code, *, full=False, transport_factory=Transport):
-    if code not in CODES:
-        raise ValueError('Only the five verified candidates can be synchronized')
+def synchronize(db, code, *, full=False, transport_factory=Transport, cached_directory=False, bootstrap_days=400):
+    if not re.fullmatch(r'[0-9]{6}', code):
+        raise ValueError('需要六位基金代码')
     fund = db.get(Fund, code)
     if not fund:
         raise ValueError('Run the seed import before syncing')
@@ -179,11 +209,17 @@ def synchronize(db, code, *, full=False, transport_factory=Transport):
     try:
         transport = transport_factory(run.id)
         latest = db.scalar(select(func.max(FundNav.nav_date)).where(FundNav.fund_code == code)) if fund.last_sync_at else None
-        bundle = fetch_bundle(code, transport, latest_cached=latest, full=full)
+        if latest and bootstrap_days and not fund.history_complete:
+            oldest = db.scalar(select(func.min(FundNav.nav_date)).where(FundNav.fund_code == code))
+            if oldest and (latest - oldest).days < bootstrap_days:
+                latest = None  # A watched/owned fund backfills its recent chart window.
+        directory = {code: {'code': code, 'name': fund.name, 'type': fund.category}} if cached_directory else None
+        bundle = fetch_bundle(code, transport, latest_cached=latest, full=full,
+                              directory=directory, bootstrap_days=bootstrap_days)
         with db.begin_nested():
             run.inserted, run.unchanged = apply_bundle(db, fund, bundle)
         run.status = 'success'
-        run.message = '净值与官网交叉核对通过；是否可模拟买入由已核验规则控制。'
+        run.message = ('净值与官网交叉核对通过。' if bundle.get('crosschecked') else '公开净值已同步（单一来源）。') + '交易采用页面所示模拟方案。'
     except (ValueError, KeyError, TypeError, ArithmeticError, OSError) as error:
         run.status = 'conflict' if isinstance(error, RevisionConflict) else 'failed'
         fund.trade_enabled = False
@@ -199,11 +235,24 @@ def synchronize(db, code, *, full=False, transport_factory=Transport):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--codes', nargs='+', choices=CODES, default=list(CODES))
+    parser.add_argument('--codes', nargs='+', help='任意目录内的六位基金代码')
+    parser.add_argument('--catalog', action='store_true', help='同步全市场基金目录')
+    parser.add_argument('--all', action='store_true', help='同步目录内全部净值型基金，可能耗时数小时')
+    parser.add_argument('--calendar', action='store_true', help='同步交易所已公布年度日历')
     parser.add_argument('--full', action='store_true', help='Fetch all available historical pages, rather than recent/incremental history')
     args = parser.parse_args()
+    if args.catalog:
+        with Session(get_engine()) as db:
+            print(json.dumps({'catalog_count': sync_directory(db, Transport(uuid4()))}))
+    if args.calendar:
+        from .trading_calendar import sync_calendar
+        print(json.dumps({'calendar_year': sync_calendar(Transport(uuid4()))}))
+    codes = args.codes or ([] if args.catalog or args.calendar else list(CODES))
+    if args.all:
+        with Session(get_engine()) as db:
+            codes = list(db.scalars(select(Fund.code).where(~Fund.category.contains('货币')).order_by(Fund.code)))
     failed = False
-    for code in dict.fromkeys(args.codes):
+    for code in dict.fromkeys(codes):
         with Session(get_engine()) as db:
             result = synchronize(db, code, full=args.full)
             print(json.dumps(result, ensure_ascii=False), flush=True)
