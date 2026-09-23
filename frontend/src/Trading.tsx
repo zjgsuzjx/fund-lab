@@ -119,11 +119,18 @@ export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { i
   const [order, setOrder] = useState<Order | null>(null)
   const [account, setAccount] = useState<Account | null>(null)
   const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const pending = useRef(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const generation = useRef(0)
+  const actionRequest = useRef<AbortController | null>(null)
+  useEffect(() => {
+    setOrder(null); setAccount(null); setFeedback(''); setError(''); setLoading(true)
+    setBusy(false); pending.current = false; setCancelOpen(false)
+    return () => { actionRequest.current?.abort(); generation.current++ }
+  }, [id, user.id])
   const [retry, setRetry] = useState(0)
   function failed(reason: unknown) { if (reason instanceof ApiError && reason.status === 401) onUnauthorized('登录已过期，请重新登录。'); else setError((reason as Error).message) }
   useEffect(() => {
@@ -131,7 +138,7 @@ export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { i
     const load = async () => {
       const version = ++generation.current
       try { const [o, a] = await Promise.all([api<Order>(`/orders/${encodeURIComponent(id)}`, undefined, controller.signal), api<Account>('/account', undefined, controller.signal)]); if (!controller.signal.aborted && version === generation.current) { setOrder(o); setAccount(a) } }
-      catch (reason) { if (!controller.signal.aborted) failed(reason) }
+      catch (reason) { if (!controller.signal.aborted && version === generation.current) failed(reason) }
       finally { if (!controller.signal.aborted) setLoading(false) }
     }
     void load()
@@ -140,13 +147,26 @@ export function OrderPage({ id, pendingPage, user, onUnauthorized }: Props & { i
   }, [id, user.id, retry])
   async function action(kind: 'cancel' | 'refresh') {
     if (pending.current) return
-    generation.current++; pending.current = true; setBusy(true); setError('')
-    try { setOrder(await api<Order>(`/orders/${id}/${kind}`, {})); setAccount(await api<Account>('/account')) }
-    catch (reason) { failed(reason); setRetry(v => v + 1) }
-    finally { pending.current = false; setBusy(false); setCancelOpen(false) }
+    generation.current++; pending.current = true; setBusy(true); setError(''); setFeedback('')
+    const controller = new AbortController()
+    actionRequest.current = controller
+    try {
+      const o = await api<Order>(`/orders/${encodeURIComponent(id)}/${kind}`, {}, controller.signal)
+      if (controller.signal.aborted) return
+      setOrder(o)
+      setFeedback(o.status === 'pending' ? `已检查，订单仍待确认。预计 ${o.confirmation_date} 起确认；${o.wait_reason}` : o.status === 'confirmed' ? '已检查，买入份额已确认，可前往持仓查看。' : '已检查，订单已撤销，预留资金已退回。')
+      try { const value = await api<Account>('/account', undefined, controller.signal); if (!controller.signal.aborted) setAccount(value) }
+      catch (reason) {
+        if (controller.signal.aborted) return
+        if (reason instanceof ApiError && reason.status === 401) failed(reason)
+        else setError('订单状态已更新，但附加信息刷新失败，请重新加载。')
+      }
+    } catch (reason) { if (!controller.signal.aborted) failed(reason) }
+    finally { if (!controller.signal.aborted) { pending.current = false; setBusy(false); setCancelOpen(false) } }
   }
   return <main className="market-shell trade-page receipt-page"><Heading title={pendingPage && order ? statusName[order.status] : '交易详情'} back="orders" />
-    {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => setRetry(v => v + 1)}>重新加载</button></div>}
+    {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => { setError(''); setRetry(v => v + 1) }}>重新加载</button></div>}
+    {feedback && <p className="soft-card" role="status">{feedback}</p>}
     {order && <><TradeReceipt status={order.status} title={statusName[order.status]} label="买入金额（元）" amount={money(order.amount)} fund={order.fund_name} code={order.fund_code}>{order.status === 'pending' ? '等待正式净值确认，份额确认后计入持有。' : order.status === 'confirmed' ? '份额已确认，可前往持有查看收益。' : '预留资金已退回可用余额。'}</TradeReceipt><Progress order={order} />
       {!pendingPage && <section className="trade-card"><h2>资金与费用</h2><Row label="支付方式">模拟余额</Row><Row label={order.status === 'pending' ? '预计申购费' : '实际申购费'}>{money(order.status === 'cancelled' ? '0' : order.fee)} 元</Row><Row label={order.status === 'pending' ? '预计净申购金额' : '净申购金额'}>{order.status === 'cancelled' ? '已撤销' : `${money(order.net_amount)} 元`}</Row><Row label="确认净值">{order.confirmed_nav ? Number(order.confirmed_nav).toFixed(4) : '—'}</Row><Row label="确认份额">{order.shares ? `${money(order.shares)} 份` : '—'}</Row></section>}
       <OrderReference id={id} created={time(order.created_at)} />

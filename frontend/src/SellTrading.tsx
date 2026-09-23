@@ -95,12 +95,19 @@ export function SellOrderPage({ id, submitted, user, onUnauthorized }: Props & {
   const [order, setOrder] = useState<SellOrder | null>(null)
   const [context, setContext] = useState<SellContext | null>(null)
   const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [retry, setRetry] = useState(0)
   const pending = useRef(false)
   const generation = useRef(0)
+  const actionRequest = useRef<AbortController | null>(null)
+  useEffect(() => {
+    setOrder(null); setContext(null); setFeedback(''); setError(''); setLoading(true)
+    setBusy(false); pending.current = false; setCancelOpen(false)
+    return () => { actionRequest.current?.abort(); generation.current++ }
+  }, [id, user.id])
   function failed(reason: unknown) { if (reason instanceof ApiError && reason.status === 401) onUnauthorized('登录已过期，请重新登录。'); else setError((reason as Error).message) }
   useEffect(() => {
     const controller = new AbortController()
@@ -119,14 +126,27 @@ export function SellOrderPage({ id, submitted, user, onUnauthorized }: Props & {
   }, [id, user.id, retry])
   async function action(kind: 'cancel' | 'refresh') {
     if (pending.current) return
-    generation.current++; pending.current = true; setBusy(true); setError('')
-    try { const o = await api<SellOrder>(`/redemptions/${id}/${kind}`, {}); setOrder(o); setContext(await api<SellContext>(`/redemptions/context/${o.fund_code}`)) }
-    catch (reason) { failed(reason) }
-    finally { pending.current = false; setBusy(false); setCancelOpen(false) }
+    generation.current++; pending.current = true; setBusy(true); setError(''); setFeedback('')
+    const controller = new AbortController()
+    actionRequest.current = controller
+    try {
+      const o = await api<SellOrder>(`/redemptions/${encodeURIComponent(id)}/${kind}`, {}, controller.signal)
+      if (controller.signal.aborted) return
+      setOrder(o)
+      setFeedback(o.status === 'pending' ? `已检查，赎回仍待确认。预计 ${o.confirmation_date} 起确认；${o.wait_reason}` : o.status === 'confirmed' ? `已检查，赎回金额已确认，预计 ${o.arrival_date} 到账。` : o.status === 'paid' ? '已检查，赎回资金已到账。' : '已检查，订单已撤销，冻结份额已释放。')
+      try { const value = await api<SellContext>(`/redemptions/context/${o.fund_code}`, undefined, controller.signal); if (!controller.signal.aborted) setContext(value) }
+      catch (reason) {
+        if (controller.signal.aborted) return
+        if (reason instanceof ApiError && reason.status === 401) failed(reason)
+        else setError('订单状态已更新，但附加信息刷新失败，请重新加载。')
+      }
+    } catch (reason) { if (!controller.signal.aborted) failed(reason) }
+    finally { if (!controller.signal.aborted) { pending.current = false; setBusy(false); setCancelOpen(false) } }
   }
   const actual = order?.status === 'confirmed' || order?.status === 'paid'
   return <main className="market-shell trade-page receipt-page"><Heading title={submitted && order?.status === 'pending' ? '卖出申请已提交' : '卖出交易详情'} back="orders" />
     {loading && <p role="status">正在加载订单…</p>}{error && <div className="error" role="alert">{error}<button disabled={busy} onClick={() => { setError(''); setRetry(v => v + 1) }}>重新加载</button></div>}
+    {feedback && <p className="soft-card" role="status">{feedback}</p>}
     {order && <><TradeReceipt status={order.status} title={sellStatusName[order.status]} label="卖出份额（份）" amount={money(order.shares)} fund={order.fund_name} code={order.fund_code}>{order.status === 'cancelled' ? '冻结份额已释放，不收取赎回费。' : actual ? `确认净到账 ${money(order.net_amount)} 元${order.status === 'paid' ? ' · 已到账' : ' · 赎回在途'}` : `预计净到账 ${money(order.quote.net_amount)} 元 · 以确认为准`}</TradeReceipt>
       <TradeTimeline cancelled={order.status === 'cancelled'} steps={[
         { title: '申请已提交', detail: `${time(order.created_at)} · 冻结 ${money(order.shares)} 份`, complete: true },
