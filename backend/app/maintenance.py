@@ -171,9 +171,8 @@ def update_due():
                 now = utcnow()
                 refresh_market(db, now)
                 codes = due_codes(db, now)
-                tracked = tracked_codes(db)
                 for code in codes:
-                    run_update(db, utcnow(), partial(synchronize, cached_directory=True, bootstrap_days=400 if code in tracked else 0),
+                    run_update(db, utcnow(), partial(synchronize, cached_directory=True, bootstrap_days=400),
                                code=code, scheduled=True)
                 return {'status': 'success', 'processed': len(codes)}
         finally:

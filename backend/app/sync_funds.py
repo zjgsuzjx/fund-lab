@@ -212,7 +212,7 @@ def synchronize(db, code, *, full=False, transport_factory=Transport, cached_dir
         if latest and bootstrap_days and not fund.history_complete:
             oldest = db.scalar(select(func.min(FundNav.nav_date)).where(FundNav.fund_code == code))
             if oldest and (latest - oldest).days < bootstrap_days:
-                latest = None  # A watched/owned fund backfills its recent chart window.
+                latest = None  # Also backfill funds previously bootstrapped with only one page.
         directory = {code: {'code': code, 'name': fund.name, 'type': fund.category}} if cached_directory else None
         bundle = fetch_bundle(code, transport, latest_cached=latest, full=full,
                               directory=directory, bootstrap_days=bootstrap_days)

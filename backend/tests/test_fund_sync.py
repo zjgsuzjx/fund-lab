@@ -96,6 +96,40 @@ def test_inconsistent_upstream_identity_and_dates():
             parse_history(json.dumps({'TotalCount': 1, 'Data': {'LSJZList': [{'FSRQ': '2024-01-01', 'DWJZ': value}]}}))
 
 
+def test_recent_only_sync_backfills_year_before_success(clean_fund):
+    from app.funds import serialize_fund
+
+    class YearTransport(FakeTransport):
+        def __init__(self, run_id=None):
+            super().__init__(run_id)
+            self.rows = [
+                {'FSRQ': (date(2024, 6, 28) - timedelta(days=i)).isoformat(),
+                 'DWJZ': '1.2500' if i < 365 else '1.0000', 'LJJZ': '1.5000'}
+                for i in range(500)
+            ]
+
+        def get(self, url):
+            body = super().get(url)
+            if 'pageIndex' in url:
+                data = json.loads(body)
+                data['TotalCount'] = len(self.rows)
+                return json.dumps(data)
+            return body
+
+    db = clean_fund
+    # Reproduce the old whole-market bootstrap on an existing installation.
+    assert synchronize(db, '000147', transport_factory=YearTransport, bootstrap_days=0)['status'] == 'success'
+    fund = db.get(Fund, '000147')
+    def display():
+        rows = list(db.scalars(select(FundNav).where(FundNav.fund_code == fund.code).order_by(FundNav.nav_date)))
+        return serialize_fund(fund, rows)
+    assert display()['year_change'] is None
+    assert synchronize(db, '000147', transport_factory=YearTransport)['status'] == 'success'
+    assert display()['year_change'] == '25.00'
+    assert not fund.history_complete  # Only the chart window, not all 500 days.
+    assert synchronize(db, '000147', transport_factory=YearTransport)['inserted'] == 0
+
+
 def test_transport_retries_and_saves_raw_evidence(tmp_path, monkeypatch):
     import app.sync_funds as sync
     calls = []
